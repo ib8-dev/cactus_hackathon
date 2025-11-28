@@ -38,6 +38,8 @@ dependencies:
   call_log: ^6.0.1
   flutter_contacts: ^1.1.8
   intl: ^0.19.0
+  cactus:
+    path: ../
 
 flutter:
   uses-material-design: true

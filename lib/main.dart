@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_intent/cactus_controller.dart';
+import 'package:flutter_intent/home_screen.dart';
 import 'package:flutter_intent/onboarding_screen.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
 }
 
@@ -13,8 +16,6 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  checkDownload() async {}
-
   @override
   Widget build(BuildContext context) {
     final Color textColor = Colors.grey[900]!;
@@ -94,7 +95,15 @@ class _MyAppState extends State<MyApp> {
       darkTheme:
           nothingTheme, // Still providing a darkTheme for completeness, but themeMode.light will override.
       themeMode: ThemeMode.light,
-      home: const OnboardingScreen(),
+      home: FutureBuilder(
+        future: CactusController.isDownloadCompleted(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData && snapshot.data == null) {
+            return Scaffold();
+          }
+          return snapshot.data! ? HomeScreen() : OnboardingScreen();
+        },
+      ),
     );
   }
 }

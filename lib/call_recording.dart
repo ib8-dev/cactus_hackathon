@@ -1,52 +1,126 @@
 import 'package:call_log/call_log.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
+import 'package:objectbox/objectbox.dart';
 
+@Entity()
 class CallRecording {
-  final String id;
+  @Id()
+  int id;
+
   final String filePath;
   final String fileName;
+
+  @Property(type: PropertyType.date)
   final DateTime dateReceived;
+
   final int size;
-  final CallLogEntry? callLog;
-  final Contact? contact;
+
+  // Transcription and processing
+  final String? transcription;
+  final bool isTranscribed;
+
+  // Store call log data as separate fields since CallLogEntry can't be stored directly
+  final String? callLogName;
+  final String? callLogNumber;
+  final int? callLogTimestamp;
+  final int? callLogDuration;
+  final String? callLogType; // 'incoming', 'outgoing', 'missed', 'rejected'
+
+  // Store contact data as separate fields
+  final String? contactDisplayName;
+  final String? contactPhoneNumber;
 
   CallRecording({
-    required this.id,
+    this.id = 0,
     required this.filePath,
     required this.fileName,
     required this.dateReceived,
     required this.size,
-    this.callLog,
-    this.contact,
+    this.transcription,
+    this.isTranscribed = false,
+    this.callLogName,
+    this.callLogNumber,
+    this.callLogTimestamp,
+    this.callLogDuration,
+    this.callLogType,
+    this.contactDisplayName,
+    this.contactPhoneNumber,
   });
 
-  bool get isLinked => callLog != null || contact != null;
+  // Transient fields (not stored in ObjectBox)
+  @Transient()
+  CallLogEntry? callLog;
+
+  @Transient()
+  Contact? contact;
+
+  bool get isLinked => callLogNumber != null || contactPhoneNumber != null;
 
   String get displayName {
-    if (callLog != null) {
-      // First try to get the contact name from call log
-      if (callLog!.name != null && callLog!.name!.isNotEmpty) {
-        return callLog!.name!;
-      }
-      // Otherwise show the number
-      if (callLog!.number != null && callLog!.number!.isNotEmpty) {
-        return callLog!.number!;
-      }
-      return 'Unknown';
+    if (callLogName != null && callLogName!.isNotEmpty) {
+      return callLogName!;
     }
-    if (contact != null) {
-      return contact!.displayName;
+    if (callLogNumber != null && callLogNumber!.isNotEmpty) {
+      return callLogNumber!;
+    }
+    if (contactDisplayName != null && contactDisplayName!.isNotEmpty) {
+      return contactDisplayName!;
     }
     return 'Unknown';
   }
 
   String? get phoneNumber {
-    if (callLog != null) {
-      return callLog!.number;
-    }
-    if (contact != null && contact!.phones.isNotEmpty) {
-      return contact!.phones.first.number;
-    }
-    return null;
+    return callLogNumber ?? contactPhoneNumber;
+  }
+
+  // Factory constructor to create from CallLogEntry
+  factory CallRecording.fromCallLog({
+    int id = 0,
+    required String filePath,
+    required String fileName,
+    required DateTime dateReceived,
+    required int size,
+    required CallLogEntry callLog,
+    String? transcription,
+    bool isTranscribed = false,
+  }) {
+    return CallRecording(
+      id: id,
+      filePath: filePath,
+      fileName: fileName,
+      dateReceived: dateReceived,
+      size: size,
+      transcription: transcription,
+      isTranscribed: isTranscribed,
+      callLogName: callLog.name,
+      callLogNumber: callLog.number,
+      callLogTimestamp: callLog.timestamp,
+      callLogDuration: callLog.duration,
+      callLogType: callLog.callType?.toString().split('.').last,
+    )..callLog = callLog;
+  }
+
+  // Factory constructor to create from Contact
+  factory CallRecording.fromContact({
+    int id = 0,
+    required String filePath,
+    required String fileName,
+    required DateTime dateReceived,
+    required int size,
+    required Contact contact,
+    String? transcription,
+    bool isTranscribed = false,
+  }) {
+    return CallRecording(
+      id: id,
+      filePath: filePath,
+      fileName: fileName,
+      dateReceived: dateReceived,
+      size: size,
+      transcription: transcription,
+      isTranscribed: isTranscribed,
+      contactDisplayName: contact.displayName,
+      contactPhoneNumber: contact.phones.isNotEmpty ? contact.phones.first.number : null,
+    )..contact = contact;
   }
 }

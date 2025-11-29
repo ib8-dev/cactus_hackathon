@@ -1,0 +1,97 @@
+{
+  "_note1": "KEEP THIS FILE! Check it into a version control system (VCS) like git.",
+  "_note2": "ObjectBox manages crucial IDs for your object model. See docs for details.",
+  "_note3": "If you have VCS merge conflicts, you must resolve them according to ObjectBox docs.",
+  "entities": [
+    {
+      "id": "1:1129777401934766731",
+      "lastPropertyId": "14:1640598700276949746",
+      "name": "CallRecording",
+      "properties": [
+        {
+          "id": "1:7394413666724893418",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:1998871522104139264",
+          "name": "filePath",
+          "type": 9
+        },
+        {
+          "id": "3:1585788067327812316",
+          "name": "fileName",
+          "type": 9
+        },
+        {
+          "id": "4:796738717241149260",
+          "name": "dateReceived",
+          "type": 10
+        },
+        {
+          "id": "5:9028374141982975860",
+          "name": "size",
+          "type": 6
+        },
+        {
+          "id": "6:1643088239178992730",
+          "name": "callLogName",
+          "type": 9
+        },
+        {
+          "id": "7:5075515361319572843",
+          "name": "callLogNumber",
+          "type": 9
+        },
+        {
+          "id": "8:5676656790061249769",
+          "name": "callLogTimestamp",
+          "type": 6
+        },
+        {
+          "id": "9:5694066843006161463",
+          "name": "callLogDuration",
+          "type": 6
+        },
+        {
+          "id": "10:8018864138188008400",
+          "name": "callLogType",
+          "type": 9
+        },
+        {
+          "id": "11:5629527891168702420",
+          "name": "contactDisplayName",
+          "type": 9
+        },
+        {
+          "id": "12:1844246036353323711",
+          "name": "contactPhoneNumber",
+          "type": 9
+        },
+        {
+          "id": "13:3206435324609867733",
+          "name": "transcription",
+          "type": 9
+        },
+        {
+          "id": "14:1640598700276949746",
+          "name": "isTranscribed",
+          "type": 1
+        }
+      ],
+      "relations": []
+    }
+  ],
+  "lastEntityId": "1:1129777401934766731",
+  "lastIndexId": "0:0",
+  "lastRelationId": "0:0",
+  "lastSequenceId": "0:0",
+  "modelVersion": 5,
+  "modelVersionParserMinimum": 5,
+  "retiredEntityUids": [],
+  "retiredIndexUids": [],
+  "retiredPropertyUids": [],
+  "retiredRelationUids": [],
+  "version": 1
+}

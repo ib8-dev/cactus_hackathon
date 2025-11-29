@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_intent/audio_files_screen.dart';
 import 'package:flutter_intent/call_recording.dart';
 import 'package:flutter_intent/link_audio_dialog.dart';
+import 'package:flutter_intent/processing_bottom_sheet.dart';
+import 'package:flutter_intent/objectbox_service.dart';
+import 'package:flutter_intent/file_service.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -15,11 +18,29 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final List<CallRecording> _audioFiles = [];
+  ObjectBoxService? _objectBox;
+  bool _isInitialized = false;
 
   @override
   void initState() {
-    init();
     super.initState();
+    _initializeObjectBox();
+    init();
+  }
+
+  Future<void> _initializeObjectBox() async {
+    if (_isInitialized) return;
+
+    _objectBox = await ObjectBoxService.create();
+    _isInitialized = true;
+
+    // Load existing recordings after ObjectBox is initialized
+    final recordings = _objectBox!.getAllCallRecordings();
+    if (mounted) {
+      setState(() {
+        _audioFiles.addAll(recordings);
+      });
+    }
   }
 
   init() async {
@@ -69,34 +90,120 @@ class _HomeScreenState extends State<HomeScreen> {
         );
 
         print('Dialog result: ${result?.type}');
-        // Always add the file, even if no link selected (result will be null)
-        if (mounted) {
-          setState(() {
-            _audioFiles.add(
-              CallRecording(
-                id: DateTime.now().millisecondsSinceEpoch.toString(),
-                filePath: file.path,
-                fileName: fileName,
-                dateReceived: lastModified,
-                size: stat.size,
-                callLog: result?.callLog,
-                contact: result?.contact,
+
+        // Copy file to app directory
+        try {
+          print('Copying file to app directory...');
+          final newFilePath = await FileService.copyFileToAppDirectory(file.path);
+          print('File copied to: $newFilePath');
+
+          // Create CallRecording object
+          CallRecording recording;
+          if (result?.callLog != null) {
+            recording = CallRecording.fromCallLog(
+              filePath: newFilePath,
+              fileName: fileName,
+              dateReceived: lastModified,
+              size: stat.size,
+              callLog: result!.callLog!,
+            );
+          } else if (result?.contact != null) {
+            recording = CallRecording.fromContact(
+              filePath: newFilePath,
+              fileName: fileName,
+              dateReceived: lastModified,
+              size: stat.size,
+              contact: result!.contact!,
+            );
+          } else {
+            recording = CallRecording(
+              filePath: newFilePath,
+              fileName: fileName,
+              dateReceived: lastModified,
+              size: stat.size,
+            );
+          }
+
+          // Save to ObjectBox
+          await _initializeObjectBox();
+          final recordingId = _objectBox!.saveCallRecording(recording);
+          recording = CallRecording(
+            id: recordingId,
+            filePath: recording.filePath,
+            fileName: recording.fileName,
+            dateReceived: recording.dateReceived,
+            size: recording.size,
+            isTranscribed: false,
+            callLogName: recording.callLogName,
+            callLogNumber: recording.callLogNumber,
+            callLogTimestamp: recording.callLogTimestamp,
+            callLogDuration: recording.callLogDuration,
+            callLogType: recording.callLogType,
+            contactDisplayName: recording.contactDisplayName,
+            contactPhoneNumber: recording.contactPhoneNumber,
+          );
+          print('Recording saved to ObjectBox with id: ${recording.id}');
+
+          // Add to UI list temporarily
+          if (mounted) {
+            setState(() {
+              _audioFiles.add(recording);
+            });
+          }
+
+          // Show processing bottom sheet
+          if (mounted) {
+            final processedRecording = await showModalBottomSheet<CallRecording>(
+              context: context,
+              isDismissible: false,
+              enableDrag: false,
+              backgroundColor: Colors.transparent,
+              builder: (context) => ProcessingBottomSheet(
+                recording: recording,
+                onComplete: () {},
               ),
             );
-          });
-          print('File added to list. Total files: ${_audioFiles.length}');
+
+            // Update the recording in the list with processed version
+            if (processedRecording != null && mounted) {
+              setState(() {
+                final index = _audioFiles.indexWhere((r) => r.id == recording.id);
+                if (index != -1) {
+                  _audioFiles[index] = processedRecording;
+                }
+              });
+            }
+          }
+        } catch (e) {
+          print('Error processing file: $e');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Error saving file: $e')),
+            );
+          }
         }
       }
     }
   }
 
-  void _removeAudioFile(CallRecording file) {
+  void _removeAudioFile(CallRecording file) async {
+    // Delete from ObjectBox
+    await _initializeObjectBox();
+    _objectBox!.deleteCallRecording(file.id);
+
+    // Delete the actual file
+    await FileService.deleteFile(file.filePath);
+
     setState(() {
       _audioFiles.remove(file);
     });
   }
 
-  void _relinkAudioFile(CallRecording oldFile, CallRecording newFile) {
+  void _relinkAudioFile(CallRecording oldFile, CallRecording newFile) async {
+    // Update in ObjectBox
+    await _initializeObjectBox();
+    _objectBox!.updateCallRecording(newFile);
+
     setState(() {
       final index = _audioFiles.indexOf(oldFile);
       if (index != -1) {

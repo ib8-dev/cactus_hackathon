@@ -16,6 +16,14 @@ class CactusController {
   static get isEmbeddingModelDownloaded async =>
       await DownloadService.modelExists(embeddingModel);
 
+  static Future<bool> isDownloadCompleted() async {
+    var lm = await isLanguageModelDownloaded;
+    var em = await isEmbeddingModelDownloaded;
+    var stt = await isSTTModelDownloaded;
+
+    return lm && em && stt;
+  }
+
   static Future<void> download() async {
     await cactusSTT.download(
       model: sttModel,

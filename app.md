@@ -1,4 +1,5 @@
-# Call Recording Analyser with AI
+# Call (R)
+Call Recording Analyser with AI
 
 ## Features
 

@@ -1,4 +1,3 @@
-import 'package:call_log/call_log.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'call_recording.dart';
@@ -32,15 +31,34 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
     );
 
     if (result != null && mounted) {
-      final updatedFile = CallRecording(
-        id: file.id,
-        filePath: file.filePath,
-        fileName: file.fileName,
-        dateReceived: file.dateReceived,
-        size: file.size,
-        callLog: result.callLog,
-        contact: result.contact,
-      );
+      CallRecording updatedFile;
+      if (result.callLog != null) {
+        updatedFile = CallRecording.fromCallLog(
+          id: file.id,
+          filePath: file.filePath,
+          fileName: file.fileName,
+          dateReceived: file.dateReceived,
+          size: file.size,
+          callLog: result.callLog!,
+        );
+      } else if (result.contact != null) {
+        updatedFile = CallRecording.fromContact(
+          id: file.id,
+          filePath: file.filePath,
+          fileName: file.fileName,
+          dateReceived: file.dateReceived,
+          size: file.size,
+          contact: result.contact!,
+        );
+      } else {
+        updatedFile = CallRecording(
+          id: file.id,
+          filePath: file.filePath,
+          fileName: file.fileName,
+          dateReceived: file.dateReceived,
+          size: file.size,
+        );
+      }
       widget.onFileRelink(file, updatedFile);
     }
   }
@@ -71,9 +89,7 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
     final accentColor = Theme.of(context).colorScheme.secondary;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Audio Files'),
-      ),
+      appBar: AppBar(title: const Text('Call recordings')),
       body: widget.audioFiles.isEmpty
           ? Center(
               child: Column(
@@ -86,18 +102,18 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'No audio files yet',
+                    'No recordings yet',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: textColor.withOpacity(0.5),
-                        ),
+                      color: textColor.withOpacity(0.5),
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'Share audio files to this app',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: textColor.withOpacity(0.4),
-                          fontSize: 12,
-                        ),
+                      color: textColor.withOpacity(0.4),
+                      fontSize: 12,
+                    ),
                   ),
                 ],
               ),
@@ -123,18 +139,19 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
                     widget.onFileRemove(file);
                   },
                   child: Container(
-                    margin:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    margin: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       border: Border.all(color: textColor.withOpacity(0.2)),
                       borderRadius: BorderRadius.circular(4),
                     ),
-                    child: file.callLog != null
+                    child: file.callLogNumber != null
                         ? _buildCallLogCard(file, textColor, accentColor)
-                        : file.contact != null
-                            ? _buildContactCard(file, textColor, accentColor)
-                            : _buildAudioFileCard(
-                                file, textColor, accentColor),
+                        : file.contactPhoneNumber != null
+                        ? _buildContactCard(file, textColor, accentColor)
+                        : _buildAudioFileCard(file, textColor, accentColor),
                   ),
                 );
               },
@@ -143,21 +160,23 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
   }
 
   Widget _buildCallLogCard(
-      CallRecording file, Color textColor, Color accentColor) {
-    final call = file.callLog!;
+    CallRecording file,
+    Color textColor,
+    Color accentColor,
+  ) {
     IconData iconData;
 
-    switch (call.callType) {
-      case CallType.incoming:
+    switch (file.callLogType) {
+      case 'incoming':
         iconData = Icons.call_received;
         break;
-      case CallType.outgoing:
+      case 'outgoing':
         iconData = Icons.call_made;
         break;
-      case CallType.missed:
+      case 'missed':
         iconData = Icons.call_missed;
         break;
-      case CallType.rejected:
+      case 'rejected':
         iconData = Icons.call_end;
         break;
       default:
@@ -170,9 +189,9 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
       title: Text(
         file.displayName,
         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w500,
-              fontSize: 14,
-            ),
+          fontWeight: FontWeight.w500,
+          fontSize: 14,
+        ),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
@@ -181,42 +200,47 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (call.number != null && call.number != file.displayName) ...[
+            if (file.callLogNumber != null &&
+                file.callLogNumber != file.displayName) ...[
               Text(
-                call.number!,
+                file.callLogNumber!,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: textColor.withOpacity(0.6),
-                      fontSize: 11,
-                    ),
+                  color: textColor.withOpacity(0.6),
+                  fontSize: 11,
+                ),
               ),
               const SizedBox(height: 2),
             ],
             Row(
               children: [
-                if (call.duration != null) ...[
-                  Icon(Icons.timer_outlined,
-                      size: 11, color: textColor.withOpacity(0.6)),
+                if (file.callLogDuration != null) ...[
+                  Icon(
+                    Icons.timer_outlined,
+                    size: 11,
+                    color: textColor.withOpacity(0.6),
+                  ),
                   const SizedBox(width: 4),
                   Text(
-                    _formatDuration(call.duration!),
+                    _formatDuration(file.callLogDuration!),
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: textColor.withOpacity(0.6),
-                          fontSize: 11,
-                        ),
+                      color: textColor.withOpacity(0.6),
+                      fontSize: 11,
+                    ),
                   ),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 6),
-                    child: Text('•',
-                        style:
-                            TextStyle(color: textColor.withOpacity(0.6))),
+                    child: Text(
+                      '•',
+                      style: TextStyle(color: textColor.withOpacity(0.6)),
+                    ),
                   ),
                 ],
                 Text(
-                  _formatCallTime(call.timestamp),
+                  _formatCallTime(file.callLogTimestamp),
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: textColor.withOpacity(0.6),
-                        fontSize: 11,
-                      ),
+                    color: textColor.withOpacity(0.6),
+                    fontSize: 11,
+                  ),
                 ),
               ],
             ),
@@ -232,35 +256,32 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
   }
 
   Widget _buildContactCard(
-      CallRecording file, Color textColor, Color accentColor) {
-    final contact = file.contact!;
-
+    CallRecording file,
+    Color textColor,
+    Color accentColor,
+  ) {
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      leading: contact.photo != null
-          ? CircleAvatar(
-              backgroundImage: MemoryImage(contact.photo!),
-              radius: 24,
-            )
-          : CircleAvatar(
-              backgroundColor: accentColor.withOpacity(0.1),
-              radius: 24,
-              child: Text(
-                contact.displayName.isNotEmpty
-                    ? contact.displayName[0].toUpperCase()
-                    : '?',
-                style: TextStyle(
-                    color: accentColor,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w500),
-              ),
-            ),
+      leading: CircleAvatar(
+        backgroundColor: accentColor.withOpacity(0.1),
+        radius: 24,
+        child: Text(
+          file.contactDisplayName != null && file.contactDisplayName!.isNotEmpty
+              ? file.contactDisplayName![0].toUpperCase()
+              : '?',
+          style: TextStyle(
+            color: accentColor,
+            fontSize: 18,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
       title: Text(
         file.displayName,
         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w500,
-              fontSize: 14,
-            ),
+          fontWeight: FontWeight.w500,
+          fontSize: 14,
+        ),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
@@ -269,39 +290,44 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (contact.phones.isNotEmpty) ...[
+            if (file.contactPhoneNumber != null) ...[
               Text(
-                contact.phones.first.number,
+                file.contactPhoneNumber!,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: textColor.withOpacity(0.6),
-                      fontSize: 11,
-                    ),
+                  color: textColor.withOpacity(0.6),
+                  fontSize: 11,
+                ),
               ),
               const SizedBox(height: 2),
             ],
             Row(
               children: [
-                Icon(Icons.audiotrack,
-                    size: 11, color: textColor.withOpacity(0.6)),
+                Icon(
+                  Icons.audiotrack,
+                  size: 11,
+                  color: textColor.withOpacity(0.6),
+                ),
                 const SizedBox(width: 4),
                 Text(
                   _formatFileSize(file.size),
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: textColor.withOpacity(0.6),
-                        fontSize: 11,
-                      ),
+                    color: textColor.withOpacity(0.6),
+                    fontSize: 11,
+                  ),
                 ),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 6),
-                  child: Text('•',
-                      style: TextStyle(color: textColor.withOpacity(0.6))),
+                  child: Text(
+                    '•',
+                    style: TextStyle(color: textColor.withOpacity(0.6)),
+                  ),
                 ),
                 Text(
                   _formatDate(file.dateReceived),
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: textColor.withOpacity(0.6),
-                        fontSize: 11,
-                      ),
+                    color: textColor.withOpacity(0.6),
+                    fontSize: 11,
+                  ),
                 ),
               ],
             ),
@@ -317,7 +343,10 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
   }
 
   Widget _buildAudioFileCard(
-      CallRecording file, Color textColor, Color accentColor) {
+    CallRecording file,
+    Color textColor,
+    Color accentColor,
+  ) {
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       leading: Container(
@@ -332,9 +361,9 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
       title: Text(
         file.fileName,
         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w500,
-              fontSize: 14,
-            ),
+          fontWeight: FontWeight.w500,
+          fontSize: 14,
+        ),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
@@ -345,21 +374,23 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
             Text(
               _formatFileSize(file.size),
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: textColor.withOpacity(0.6),
-                    fontSize: 11,
-                  ),
+                color: textColor.withOpacity(0.6),
+                fontSize: 11,
+              ),
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 6),
-              child:
-                  Text('•', style: TextStyle(color: textColor.withOpacity(0.6))),
+              child: Text(
+                '•',
+                style: TextStyle(color: textColor.withOpacity(0.6)),
+              ),
             ),
             Text(
               _formatDate(file.dateReceived),
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: textColor.withOpacity(0.6),
-                    fontSize: 11,
-                  ),
+                color: textColor.withOpacity(0.6),
+                fontSize: 11,
+              ),
             ),
           ],
         ),

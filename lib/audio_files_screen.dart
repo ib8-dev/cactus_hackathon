@@ -40,8 +40,7 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
     try {
       final objectBox = ObjectBoxService.instance;
       final allRecordings = objectBox.getAllCallRecordings();
-      final demoRecordings =
-          allRecordings.where((r) => r.isDemoData).toList();
+      final demoRecordings = allRecordings.where((r) => r.isDemoData).toList();
 
       if (demoRecordings.isNotEmpty && mounted) {
         setState(() {
@@ -379,9 +378,9 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
                 );
               },
             ),
-      floatingActionButton: kDebugMode
-          ? _buildDebugFAB(textColor, accentColor)
-          : null,
+      // floatingActionButton: kDebugMode
+      //     ? _buildDebugFAB(textColor, accentColor)
+      //     : null,
     );
   }
 
@@ -457,7 +456,7 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
 
               _demoRecordings = await DemoDataLoader.loadDemoData(
                 objectBox,
-                generateEmbeddings: true,
+                generateEmbeddings: false,
               );
 
               setState(() {

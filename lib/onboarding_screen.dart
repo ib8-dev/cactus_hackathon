@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_intent/cactus_controller.dart';
 import 'package:flutter_intent/home_screen.dart';
+import 'package:flutter_intent/objectbox_service.dart';
+import 'package:flutter_intent/demo_data_loader.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -89,8 +91,25 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       }
     }
 
-    // Navigate to home after all downloads complete
+    // Load demo data without embeddings after all downloads complete
     if (mounted) {
+      try {
+        final objectBox = ObjectBoxService.instance;
+
+        // Clear any existing demo data
+        await DemoDataLoader.clearDemoData(objectBox);
+
+        // Load demo data WITHOUT generating embeddings (faster onboarding)
+        await DemoDataLoader.loadDemoData(
+          objectBox,
+          generateEmbeddings: false,
+        );
+
+        print('✅ Demo data loaded for onboarding (embeddings will be generated on first search)');
+      } catch (e) {
+        print('⚠️  Error loading demo data during onboarding: $e');
+      }
+
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (context) => const HomeScreen()),
       );

@@ -6,6 +6,7 @@ import 'package:flutter_intent/objectbox_service.dart';
 import 'package:flutter_intent/transcription.dart';
 import 'package:cactus/cactus.dart';
 import 'package:flutter_intent/rag_service.dart';
+import 'package:flutter_intent/notes_extraction_service.dart';
 
 enum ProcessingStep {
   linking,
@@ -253,6 +254,10 @@ class _ProcessingBottomSheetState extends State<ProcessingBottomSheet>
         return false;
       }
 
+      // Extract notes using regex-based extraction (reliable with small models)
+      final extractedNotes = NotesExtractionService.extractNotes(transcriptionText);
+      print('Extracted notes: ${extractedNotes.length} characters');
+
       // Fetch the latest recording from ObjectBox to preserve all relationships
       final objectBox = ObjectBoxService.instance;
       final freshRecording = objectBox.getCallRecording(_updatedRecording!.id);
@@ -262,7 +267,7 @@ class _ProcessingBottomSheetState extends State<ProcessingBottomSheet>
         return false;
       }
 
-      // Create new recording with updated summary, preserving other fields
+      // Create new recording with updated summary and notes, preserving other fields
       final updatedRecording = CallRecording(
         id: freshRecording.id,
         filePath: freshRecording.filePath,
@@ -270,6 +275,7 @@ class _ProcessingBottomSheetState extends State<ProcessingBottomSheet>
         dateReceived: freshRecording.dateReceived,
         size: freshRecording.size,
         summary: summary,
+        notes: extractedNotes,
         isSummarized: true,
         isVectorized: freshRecording.isVectorized,
         callLogName: freshRecording.callLogName,

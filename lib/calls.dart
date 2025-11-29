@@ -1,6 +1,8 @@
 /// This is the Mock calls data to show for demo purpose. Since this app is for a Hackathon, to show the apps's functionality in one go.
 /// Get relevant data for us, don't take every fields. No audio for demo.
-///
+/// One important feature we are going to have, which is not implemented yet is, "Notes" feature, we should that next to summary tab.
+/// Notes feature is just how humans takes notes while they are in a call.
+/// We initially focus on just 10 fields
 
 var callsData = [
   {
@@ -456,6 +458,96 @@ var callsData = [
         {"label": "Rejected", "value": "Kevin"},
         {"label": "Start Date", "value": "Next Monday"},
         {"label": "Action", "value": "Send Offer Letter"},
+      ],
+    },
+  },
+  {
+    "id": "call_2025_21",
+    "timestamp": "2025-11-22T14:30:00.000",
+    "duration_seconds": 75,
+    "contact_name": "Dr. Martinez (Referral)",
+    "phone_number": "+1-555-033-7788",
+    "audio_file_path": null,
+    "is_snippet": false,
+    "transcript":
+        "Hi, this is Dr. Martinez returning your call. I reviewed the X-rays your primary care sent over. I'd like to schedule you for a consultation next week. When you call my office to book, ask for Janet. Her direct line is... let me give you the number. It's area code 555, then 876-3401. Again, that's 555-876-3401. Make sure you mention that I referred you, otherwise they'll put you on the general waitlist which is backed up for three weeks. Oh, and bring your insurance card and a photo ID. See you soon.",
+    "ai_metadata": {
+      "summary":
+          "Dr. Martinez reviewed X-rays and wants to schedule a consultation. Provided direct office number (555-876-3401) and instructed to ask for Janet with referral mention to avoid waitlist.",
+      "sentiment": "Professional / Informative",
+      "entities": [
+        {"label": "Phone", "value": "555-876-3401"},
+        {"label": "Contact", "value": "Janet (Office Scheduler)"},
+        {"label": "Requirement", "value": "Insurance Card + Photo ID"},
+        {"label": "Action", "value": "Call to Schedule Consultation"},
+      ],
+    },
+  },
+  {
+    "id": "call_2025_22",
+    "timestamp": "2025-11-23T16:45:00.000",
+    "duration_seconds": 95,
+    "contact_name": "Rachel (Real Estate)",
+    "phone_number": "+1-555-091-2233",
+    "audio_file_path": null,
+    "is_snippet": false,
+    "transcript":
+        "Hey! Rachel here from Skyline Realty. Great news—I found three properties that match your criteria. I'm sending you the listing links via email, but I really think you should see the condo on Pine Street ASAP. It's listed at four hundred and twenty-five thousand, but the seller is motivated. Here's what I need you to do. Call the building manager directly to schedule a private showing before the open house this weekend. His name is Robert Chen. Write this down: 415-298-7654. That's 415-298-7654. Tell him Rachel sent you. He owes me a favor, so he'll prioritize you. Can you call him today? The property won't last.",
+    "ai_metadata": {
+      "summary":
+          "Rachel found a condo match on Pine Street listed at \$425k. Provided building manager's direct number (415-298-7654) to schedule private showing before open house. Urgent action needed.",
+      "sentiment": "Excited / Urgent",
+      "entities": [
+        {"label": "Phone", "value": "415-298-7654"},
+        {"label": "Contact", "value": "Robert Chen (Building Manager)"},
+        {"label": "Property", "value": "Pine Street Condo"},
+        {"label": "Price", "value": "\$425,000"},
+        {"label": "Action", "value": "Call Today for Showing"},
+      ],
+    },
+  },
+  {
+    "id": "call_2025_23",
+    "timestamp": "2025-11-25T11:20:00.000",
+    "duration_seconds": 120,
+    "contact_name": "Tom (Client)",
+    "phone_number": "+1-555-044-9988",
+    "audio_file_path": null,
+    "is_snippet": false,
+    "transcript":
+        "Tom, hey, it's John. Listen, I know you've been trying to get ahold of the legal team about the contract amendments. They've been swamped, but I got you a shortcut. My contact there is Elizabeth Warner. She handles commercial agreements. \n\nOkay, what's her number? \n\nAlright, she's got two lines. Her office landline is 202-555-1823. But honestly, she never picks that up. If you want to actually reach her, text her mobile. It's 202-779-4456. Let me repeat that. 202-779-4456. \n\nGot it. 202-779-4456. \n\nYeah. And when you text her, start with 'John from Project Alpha referred me' so she knows you're legit. She gets bombarded with spam, so otherwise she'll ignore it. \n\nPerfect. I'll text her this afternoon. Thanks for the connect, man. \n\nNo problem. Let me know how it goes.",
+    "ai_metadata": {
+      "summary":
+          "John provided contact info for legal team member Elizabeth Warner. Office line: 202-555-1823 (rarely answered). Preferred mobile: 202-779-4456 (text recommended with referral mention).",
+      "sentiment": "Helpful / Networking",
+      "entities": [
+        {"label": "Phone", "value": "202-555-1823 (Office)"},
+        {"label": "Phone", "value": "202-779-4456 (Mobile - Preferred)"},
+        {"label": "Contact", "value": "Elizabeth Warner (Legal)"},
+        {"label": "Action", "value": "Text with Referral Introduction"},
+      ],
+    },
+  },
+  {
+    "id": "call_2025_24",
+    "timestamp": "2025-11-26T10:00:00.000",
+    "duration_seconds": 85,
+    "contact_name": "Unknown Caller",
+    "phone_number": "+1-555-077-3322",
+    "audio_file_path": null,
+    "is_snippet": false,
+    "transcript":
+        "Hey, sorry I missed you at the conference yesterday. I wanted to follow up on the API integration we discussed. I think our platforms could work really well together. \n\nYeah, definitely interested. What's the next step? \n\nLet's set up a technical deep-dive call next week. I'll have my CTO join. Can you send me an email with your availability? My work email is james.patterson@techflow.io. That's J-A-M-E-S dot P-A-T-T-E-R-S-O-N at techflow dot I-O. \n\nGot it. \n\nOh, and if you want to reach me directly, my cell is 650-443-8821. I'm on Pacific Time, so avoid calling before 9 AM. Text is fine anytime though. \n\nPerfect. I'll send that email today. \n\nAwesome. Looking forward to it.",
+    "ai_metadata": {
+      "summary":
+          "Follow-up from conference regarding API integration partnership. Contact provided email (james.patterson@techflow.io) and mobile (650-443-8821, Pacific Time). Next step: Send availability for technical call.",
+      "sentiment": "Professional / Collaborative",
+      "entities": [
+        {"label": "Phone", "value": "650-443-8821"},
+        {"label": "Email", "value": "james.patterson@techflow.io"},
+        {"label": "Contact", "value": "James Patterson"},
+        {"label": "Timezone", "value": "Pacific Time (No calls before 9 AM)"},
+        {"label": "Action", "value": "Email Availability"},
       ],
     },
   },

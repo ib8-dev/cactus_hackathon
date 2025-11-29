@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'call_recording.dart';
@@ -5,6 +6,8 @@ import 'link_audio_dialog.dart';
 import 'recording_detail_bottom_sheet.dart';
 import 'processing_bottom_sheet.dart';
 import 'search_screen.dart';
+import 'demo_data_loader.dart';
+import 'objectbox_service.dart';
 
 class AudioFilesScreen extends StatefulWidget {
   final List<CallRecording> audioFiles;
@@ -23,6 +26,84 @@ class AudioFilesScreen extends StatefulWidget {
 }
 
 class _AudioFilesScreenState extends State<AudioFilesScreen> {
+  bool _showDemoData = false;
+  List<CallRecording> _demoRecordings = [];
+  bool _isDemoLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPersistedDemoData();
+  }
+
+  Future<void> _loadPersistedDemoData() async {
+    try {
+      final objectBox = ObjectBoxService.instance;
+      final allRecordings = objectBox.getAllCallRecordings();
+      final demoRecordings =
+          allRecordings.where((r) => r.isDemoData).toList();
+
+      if (demoRecordings.isNotEmpty && mounted) {
+        setState(() {
+          _demoRecordings = demoRecordings;
+        });
+        print('📦 Loaded ${demoRecordings.length} persisted demo recordings');
+      }
+    } catch (e) {
+      print('Error loading persisted demo data: $e');
+    }
+  }
+
+  List<CallRecording> get _displayedFiles {
+    if (_showDemoData) {
+      return _demoRecordings;
+    } else {
+      // Ensure we only show real user data (filter out any demo data)
+      return widget.audioFiles.where((r) => !r.isDemoData).toList();
+    }
+  }
+
+  Future<void> _toggleDemoData() async {
+    if (_isDemoLoading) return;
+
+    setState(() {
+      _isDemoLoading = true;
+    });
+
+    try {
+      final objectBox = ObjectBoxService.instance;
+
+      if (!_showDemoData) {
+        // Load demo data from ObjectBox (if already exists)
+        final allRecordings = objectBox.getAllCallRecordings();
+        _demoRecordings = allRecordings.where((r) => r.isDemoData).toList();
+
+        print(
+          '🎬 Demo mode ON: ${_demoRecordings.length} demo calls | ${DemoDataLoader.getRealDataCount(objectBox)} real calls',
+        );
+      } else {
+        print(
+          '📱 Demo mode OFF: ${DemoDataLoader.getRealDataCount(objectBox)} real calls',
+        );
+      }
+
+      setState(() {
+        _showDemoData = !_showDemoData;
+        _isDemoLoading = false;
+      });
+    } catch (e) {
+      print('Error toggling demo data: $e');
+      setState(() {
+        _isDemoLoading = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error loading demo data: $e')));
+      }
+    }
+  }
+
   void _showDetailSheet(CallRecording file) {
     showModalBottomSheet(
       context: context,
@@ -43,10 +124,8 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
       isDismissible: false,
       enableDrag: false,
       backgroundColor: Colors.transparent,
-      builder: (context) => ProcessingBottomSheet(
-        recording: file,
-        onComplete: () {},
-      ),
+      builder: (context) =>
+          ProcessingBottomSheet(recording: file, onComplete: () {}),
     );
 
     if (updatedRecording != null && mounted) {
@@ -125,7 +204,83 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Call recordings'),
+        title: Row(
+          children: [
+            const Text('Call Recordings'),
+            const SizedBox(width: 12),
+            GestureDetector(
+              onTap: _isDemoLoading ? null : _toggleDemoData,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: _showDemoData
+                        ? accentColor
+                        : textColor.withValues(alpha: 0.3),
+                    width: 1,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Demo',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: _showDemoData
+                            ? accentColor
+                            : textColor.withValues(alpha: 0.5),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    _isDemoLoading
+                        ? SizedBox(
+                            width: 36,
+                            height: 20,
+                            child: Center(
+                              child: SizedBox(
+                                width: 12,
+                                height: 12,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: accentColor,
+                                ),
+                              ),
+                            ),
+                          )
+                        : Container(
+                            width: 36,
+                            height: 20,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(10),
+                              color: _showDemoData
+                                  ? accentColor
+                                  : textColor.withValues(alpha: 0.2),
+                            ),
+                            child: AnimatedAlign(
+                              duration: const Duration(milliseconds: 200),
+                              alignment: _showDemoData
+                                  ? Alignment.centerRight
+                                  : Alignment.centerLeft,
+                              child: Container(
+                                margin: const EdgeInsets.all(2),
+                                width: 16,
+                                height: 16,
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
         actions: [
           IconButton(
             icon: Icon(Icons.search, color: accentColor),
@@ -138,7 +293,7 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
           ),
         ],
       ),
-      body: widget.audioFiles.isEmpty
+      body: _displayedFiles.isEmpty
           ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -168,9 +323,9 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
             )
           : ListView.builder(
               padding: const EdgeInsets.symmetric(vertical: 8),
-              itemCount: widget.audioFiles.length,
+              itemCount: _displayedFiles.length,
               itemBuilder: (context, index) {
-                final file = widget.audioFiles[index];
+                final file = _displayedFiles[index];
                 return Dismissible(
                   key: Key(file.filePath),
                   direction: DismissDirection.endToStart,
@@ -207,7 +362,109 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
                 );
               },
             ),
+      floatingActionButton: kDebugMode
+          ? _buildDebugFAB(textColor, accentColor)
+          : null,
     );
+  }
+
+  Widget? _buildDebugFAB(Color textColor, Color accentColor) {
+    try {
+      final objectBox = ObjectBoxService.instance;
+      final demoCount = DemoDataLoader.getDemoDataCount(objectBox);
+      final hasDemoData = demoCount > 0;
+
+      return FloatingActionButton.extended(
+        onPressed: () async {
+          if (hasDemoData) {
+            // Clear demo data
+            final confirmed = await showDialog<bool>(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('🧹 Clear Demo Data'),
+                content: Text(
+                  'Remove $demoCount demo recordings from database?\n\n'
+                  'Real user recordings will NOT be affected.\n\n'
+                  '(Debug Mode Only)',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('Cancel'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    style: TextButton.styleFrom(foregroundColor: Colors.red),
+                    child: const Text('Clear'),
+                  ),
+                ],
+              ),
+            );
+
+            if (confirmed == true && mounted) {
+              await DemoDataLoader.clearDemoData(objectBox);
+              setState(() {
+                _demoRecordings.clear();
+                _showDemoData = false;
+              });
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('🗑️ Cleared $demoCount demo recordings'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              }
+            }
+          } else {
+            // Load demo data
+            setState(() {
+              _isDemoLoading = true;
+            });
+
+            try {
+              await DemoDataLoader.clearDemoData(objectBox);
+              _demoRecordings = await DemoDataLoader.loadDemoData(objectBox);
+
+              setState(() {
+                _isDemoLoading = false;
+              });
+
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      '🎬 Loaded ${_demoRecordings.length} demo calls',
+                    ),
+                    backgroundColor: Colors.blue,
+                  ),
+                );
+              }
+            } catch (e) {
+              setState(() {
+                _isDemoLoading = false;
+              });
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Error loading demo data: $e')),
+                );
+              }
+            }
+          }
+        },
+        backgroundColor: hasDemoData
+            ? Colors.red.shade400
+            : Colors.blue.shade400,
+        icon: Icon(hasDemoData ? Icons.delete_sweep : Icons.download),
+        label: Text(
+          hasDemoData ? 'Clear Demo ($demoCount)' : 'Load Demo',
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+      );
+    } catch (e) {
+      // ObjectBox not initialized yet
+      return null;
+    }
   }
 
   Widget _buildCallLogCard(
@@ -216,7 +473,8 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
     Color accentColor,
   ) {
     // Check if fully processed: transcribed, summarized, AND vectorized
-    final isProcessed = file.transcription.target != null &&
+    final isProcessed =
+        file.transcription.target != null &&
         file.isSummarized &&
         file.isVectorized;
     final iconColor = isProcessed
@@ -322,7 +580,8 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
     Color accentColor,
   ) {
     // Check if fully processed: transcribed, summarized, AND vectorized
-    final isProcessed = file.transcription.target != null &&
+    final isProcessed =
+        file.transcription.target != null &&
         file.isSummarized &&
         file.isVectorized;
     final avatarColor = isProcessed
@@ -418,7 +677,8 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
     Color accentColor,
   ) {
     // Check if fully processed: transcribed, summarized, AND vectorized
-    final isProcessed = file.transcription.target != null &&
+    final isProcessed =
+        file.transcription.target != null &&
         file.isSummarized &&
         file.isVectorized;
     final iconColor = isProcessed

@@ -132,6 +132,7 @@ class RagService {
       summary: freshRecording.summary,
       isSummarized: freshRecording.isSummarized,
       isVectorized: true,
+      notes: freshRecording.notes,
       callLogName: freshRecording.callLogName,
       callLogNumber: freshRecording.callLogNumber,
       callLogTimestamp: freshRecording.callLogTimestamp,
@@ -243,6 +244,9 @@ class RagService {
         // Get the recording
         final recording = objectBox.getCallRecording(recordingId);
         if (recording == null) continue;
+
+        // Skip demo data in search results
+        if (recording.isDemoData) continue;
 
         // Calculate average distance (lower is better)
         final avgDistance =

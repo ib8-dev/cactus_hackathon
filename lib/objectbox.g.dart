@@ -24,7 +24,7 @@ final _entities = <obx_int.ModelEntity>[
   obx_int.ModelEntity(
     id: const obx_int.IdUid(1, 1129777401934766731),
     name: 'CallRecording',
-    lastPropertyId: const obx_int.IdUid(19, 5033993400993430075),
+    lastPropertyId: const obx_int.IdUid(21, 3436059476579878084),
     flags: 0,
     properties: <obx_int.ModelProperty>[
       obx_int.ModelProperty(
@@ -125,6 +125,18 @@ final _entities = <obx_int.ModelEntity>[
         indexId: const obx_int.IdUid(1, 3553733258145972750),
         relationField: 'transcription',
         relationTarget: 'Transcription',
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(20, 2295856414036320236),
+        name: 'isDemoData',
+        type: 1,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(21, 3436059476579878084),
+        name: 'notes',
+        type: 9,
+        flags: 0,
       ),
     ],
     relations: <obx_int.ModelRelation>[
@@ -309,7 +321,10 @@ obx_int.ModelDefinition getObjectBoxModel() {
         final summaryOffset = object.summary == null
             ? null
             : fbb.writeString(object.summary!);
-        fbb.startTable(20);
+        final notesOffset = object.notes == null
+            ? null
+            : fbb.writeString(object.notes!);
+        fbb.startTable(22);
         fbb.addInt64(0, object.id);
         fbb.addOffset(1, filePathOffset);
         fbb.addOffset(2, fileNameOffset);
@@ -326,6 +341,8 @@ obx_int.ModelDefinition getObjectBoxModel() {
         fbb.addBool(15, object.isSummarized);
         fbb.addBool(16, object.isVectorized);
         fbb.addInt64(17, object.transcription.targetId);
+        fbb.addBool(19, object.isDemoData);
+        fbb.addOffset(20, notesOffset);
         fbb.finish(fbb.endTable());
         return object.id;
       },
@@ -368,6 +385,15 @@ obx_int.ModelDefinition getObjectBoxModel() {
           36,
           false,
         );
+        final notesParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGetNullable(buffer, rootOffset, 44);
+        final isDemoDataParam = const fb.BoolReader().vTableGet(
+          buffer,
+          rootOffset,
+          42,
+          false,
+        );
         final callLogNameParam = const fb.StringReader(
           asciiOptimization: true,
         ).vTableGetNullable(buffer, rootOffset, 14);
@@ -402,6 +428,8 @@ obx_int.ModelDefinition getObjectBoxModel() {
           summary: summaryParam,
           isSummarized: isSummarizedParam,
           isVectorized: isVectorizedParam,
+          notes: notesParam,
+          isDemoData: isDemoDataParam,
           callLogName: callLogNameParam,
           callLogNumber: callLogNumberParam,
           callLogTimestamp: callLogTimestampParam,
@@ -637,6 +665,16 @@ class CallRecording_ {
       obx.QueryRelationToOne<CallRecording, Transcription>(
         _entities[0].properties[15],
       );
+
+  /// See [CallRecording.isDemoData].
+  static final isDemoData = obx.QueryBooleanProperty<CallRecording>(
+    _entities[0].properties[16],
+  );
+
+  /// See [CallRecording.notes].
+  static final notes = obx.QueryStringProperty<CallRecording>(
+    _entities[0].properties[17],
+  );
 
   /// see [CallRecording.vectors]
   static final vectors = obx.QueryRelationToMany<CallRecording, Vector>(

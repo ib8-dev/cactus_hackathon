@@ -5,7 +5,7 @@
   "entities": [
     {
       "id": "1:1129777401934766731",
-      "lastPropertyId": "19:5033993400993430075",
+      "lastPropertyId": "21:3436059476579878084",
       "name": "CallRecording",
       "properties": [
         {
@@ -91,6 +91,16 @@
           "type": 11,
           "flags": 520,
           "relationTarget": "Transcription"
+        },
+        {
+          "id": "20:2295856414036320236",
+          "name": "isDemoData",
+          "type": 1
+        },
+        {
+          "id": "21:3436059476579878084",
+          "name": "notes",
+          "type": 9
         }
       ],
       "relations": [

@@ -35,10 +35,13 @@ class _HomeScreenState extends State<HomeScreen> {
     _isInitialized = true;
 
     // Load existing recordings after ObjectBox is initialized
-    final recordings = _objectBox!.getAllCallRecordings();
+    // Filter out demo data - only show real user recordings
+    final allRecordings = _objectBox!.getAllCallRecordings();
+    final realRecordings = allRecordings.where((r) => !r.isDemoData).toList();
+
     if (mounted) {
       setState(() {
-        _audioFiles.addAll(recordings);
+        _audioFiles.addAll(realRecordings);
       });
     }
   }
@@ -123,11 +126,14 @@ class _HomeScreenState extends State<HomeScreen> {
               recording: recording,
               onComplete: () {
                 // Refresh UI when processing completes
+                // Filter out demo data - only show real user recordings
                 if (mounted) {
                   setState(() {
-                    final recordings = _objectBox!.getAllCallRecordings();
+                    final allRecordings = _objectBox!.getAllCallRecordings();
+                    final realRecordings =
+                        allRecordings.where((r) => !r.isDemoData).toList();
                     _audioFiles.clear();
-                    _audioFiles.addAll(recordings);
+                    _audioFiles.addAll(realRecordings);
                   });
                 }
               },

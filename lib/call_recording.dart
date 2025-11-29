@@ -30,6 +30,12 @@ class CallRecording {
   // Vectorization
   final bool isVectorized;
 
+  // Notes extracted from transcription (stored as JSON string)
+  final String? notes;
+
+  // Demo data flag for development
+  final bool isDemoData;
+
   // Store call log data as separate fields since CallLogEntry can't be stored directly
   final String? callLogName;
   final String? callLogNumber;
@@ -50,6 +56,8 @@ class CallRecording {
     this.summary,
     this.isSummarized = false,
     this.isVectorized = false,
+    this.notes,
+    this.isDemoData = false,
     this.callLogName,
     this.callLogNumber,
     this.callLogTimestamp,
@@ -96,6 +104,8 @@ class CallRecording {
     String? summary,
     bool isSummarized = false,
     bool isVectorized = false,
+    String? notes,
+    bool isDemoData = false,
   }) {
     return CallRecording(
       id: id,
@@ -106,6 +116,8 @@ class CallRecording {
       summary: summary,
       isSummarized: isSummarized,
       isVectorized: isVectorized,
+      notes: notes,
+      isDemoData: isDemoData,
       callLogName: callLog.name,
       callLogNumber: callLog.number,
       callLogTimestamp: callLog.timestamp,
@@ -125,6 +137,8 @@ class CallRecording {
     String? summary,
     bool isSummarized = false,
     bool isVectorized = false,
+    String? notes,
+    bool isDemoData = false,
   }) {
     return CallRecording(
       id: id,
@@ -135,6 +149,8 @@ class CallRecording {
       summary: summary,
       isSummarized: isSummarized,
       isVectorized: isVectorized,
+      notes: notes,
+      isDemoData: isDemoData,
       contactDisplayName: contact.displayName,
       contactPhoneNumber: contact.phones.isNotEmpty ? contact.phones.first.number : null,
     )..contact = contact;

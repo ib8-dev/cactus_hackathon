@@ -1,7 +1,9 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'call_recording.dart';
 import 'transcription.dart';
 
@@ -26,7 +28,7 @@ class _RecordingDetailBottomSheetState extends State<RecordingDetailBottomSheet>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this); // Changed to 3 tabs
     _audioPlayer = AudioPlayer();
     _initAudioPlayer();
   }
@@ -129,6 +131,45 @@ class _RecordingDetailBottomSheetState extends State<RecordingDetailBottomSheet>
     );
   }
 
+  Future<void> _makePhoneCall(String phoneNumber) async {
+    final Uri phoneUri = Uri(scheme: 'tel', path: phoneNumber);
+    if (await canLaunchUrl(phoneUri)) {
+      await launchUrl(phoneUri);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not launch phone call')),
+        );
+      }
+    }
+  }
+
+  Future<void> _sendEmail(String email) async {
+    final Uri emailUri = Uri(scheme: 'mailto', path: email);
+    if (await canLaunchUrl(emailUri)) {
+      await launchUrl(emailUri);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not launch email app')),
+        );
+      }
+    }
+  }
+
+  Future<void> _openUrl(String url) async {
+    final Uri uri = Uri.parse(url.startsWith('http') ? url : 'https://$url');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open URL')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final textColor = Theme.of(context).colorScheme.onSurface;
@@ -177,6 +218,7 @@ class _RecordingDetailBottomSheetState extends State<RecordingDetailBottomSheet>
               ),
               tabs: const [
                 Tab(text: 'SUMMARY'),
+                Tab(text: 'NOTES'),
                 Tab(text: 'TRANSCRIPTION'),
               ],
             ),
@@ -188,6 +230,7 @@ class _RecordingDetailBottomSheetState extends State<RecordingDetailBottomSheet>
               controller: _tabController,
               children: [
                 _buildSummaryTab(textColor, accentColor),
+                _buildNotesTab(textColor, accentColor),
                 _buildTranscriptionTabContent(textColor, accentColor),
               ],
             ),
@@ -303,6 +346,232 @@ class _RecordingDetailBottomSheetState extends State<RecordingDetailBottomSheet>
           color: textColor.withOpacity(0.7),
           letterSpacing: 0.5,
         ),
+      ),
+    );
+  }
+
+  Widget _buildNotesTab(Color textColor, Color accentColor) {
+    // Parse notes from JSON
+    Map<String, dynamic>? notes;
+    if (widget.recording.notes != null && widget.recording.notes!.isNotEmpty) {
+      try {
+        notes = jsonDecode(widget.recording.notes!) as Map<String, dynamic>;
+      } catch (e) {
+        print('Error parsing notes JSON: $e');
+      }
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'NOTES',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.2,
+              color: textColor.withOpacity(0.5),
+            ),
+          ),
+          const SizedBox(height: 16),
+          _buildNotesContent(notes, textColor, accentColor),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNotesContent(
+    Map<String, dynamic>? notes,
+    Color textColor,
+    Color accentColor,
+  ) {
+    if (notes == null || notes.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 40),
+          child: Text(
+            'No notes available',
+            style: TextStyle(
+              fontSize: 13,
+              color: textColor.withOpacity(0.4),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (notes['phones'] != null && (notes['phones'] as List).isNotEmpty)
+          _buildNoteSection(
+            'Phones',
+            notes['phones'] as List,
+            Icons.phone,
+            accentColor,
+            textColor,
+            onTap: (value) => _makePhoneCall(value),
+          ),
+        if (notes['emails'] != null && (notes['emails'] as List).isNotEmpty)
+          _buildNoteSection(
+            'Emails',
+            notes['emails'] as List,
+            Icons.email,
+            accentColor,
+            textColor,
+            onTap: (value) => _sendEmail(value),
+          ),
+        if (notes['websites'] != null &&
+            (notes['websites'] as List).isNotEmpty)
+          _buildNoteSection(
+            'Websites',
+            notes['websites'] as List,
+            Icons.web,
+            accentColor,
+            textColor,
+            onTap: (value) => _openUrl(value),
+          ),
+        if (notes['money'] != null && (notes['money'] as List).isNotEmpty)
+          _buildNoteSection(
+            'Money',
+            notes['money'] as List,
+            Icons.attach_money,
+            accentColor,
+            textColor,
+          ),
+        if (notes['dates'] != null && (notes['dates'] as List).isNotEmpty)
+          _buildNoteSection(
+            'Dates',
+            notes['dates'] as List,
+            Icons.calendar_today,
+            accentColor,
+            textColor,
+          ),
+        if (notes['people'] != null && (notes['people'] as List).isNotEmpty)
+          _buildNoteSection(
+            'People',
+            notes['people'] as List,
+            Icons.person,
+            accentColor,
+            textColor,
+          ),
+        if (notes['places'] != null && (notes['places'] as List).isNotEmpty)
+          _buildNoteSection(
+            'Places',
+            notes['places'] as List,
+            Icons.location_on,
+            accentColor,
+            textColor,
+          ),
+        if (notes['other_notes'] != null &&
+            (notes['other_notes'] as List).isNotEmpty)
+          _buildNoteSection(
+            'Other Notes',
+            notes['other_notes'] as List,
+            Icons.note,
+            accentColor,
+            textColor,
+          ),
+      ],
+    );
+  }
+
+  Widget _buildNoteSection(
+    String title,
+    List<dynamic> items,
+    IconData icon,
+    Color accentColor,
+    Color textColor, {
+    Function(String)? onTap,
+  }) {
+    if (items.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: accentColor),
+              const SizedBox(width: 8),
+              Text(
+                title.toUpperCase(),
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.2,
+                  color: textColor.withOpacity(0.7),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...items.map((item) {
+            final value = item['value'] as String;
+            final context = item['context'] as String?;
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: InkWell(
+                onTap: onTap != null ? () => onTap(value) : null,
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: textColor.withOpacity(0.2),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              value,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: onTap != null ? accentColor : textColor,
+                              ),
+                            ),
+                            if (context != null && context.isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                context,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: textColor.withOpacity(0.6),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      if (onTap != null)
+                        Icon(
+                          Icons.arrow_forward_ios,
+                          size: 14,
+                          color: accentColor,
+                        )
+                      else
+                        IconButton(
+                          icon: Icon(Icons.copy, size: 16, color: accentColor),
+                          onPressed: () => _copyToClipboard(value, title),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }),
+        ],
       ),
     );
   }

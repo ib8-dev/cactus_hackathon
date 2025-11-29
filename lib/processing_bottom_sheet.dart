@@ -335,18 +335,17 @@ class _ProcessingBottomSheetState extends State<ProcessingBottomSheet>
     final textColor = Theme.of(context).colorScheme.onSurface;
     final accentColor = Theme.of(context).colorScheme.secondary;
 
-    return SizedBox(
+    return Container(
       height: MediaQuery.of(context).size.height * 0.8,
-      child: Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).scaffoldBackgroundColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(0)),
-        ),
-        padding: const EdgeInsets.all(24),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        border: Border.all(color: textColor.withOpacity(0.2), width: 2),
+      ),
+      padding: const EdgeInsets.all(24),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
               // Title
               Text(
                 'Processing Audio',
@@ -427,8 +426,7 @@ class _ProcessingBottomSheetState extends State<ProcessingBottomSheet>
                 ),
                 const SizedBox(height: 16),
               ],
-            ],
-          ),
+          ],
         ),
       ),
     );

@@ -182,9 +182,9 @@ class _LinkAudioDialogState extends State<LinkAudioDialog>
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.85,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(0)),
+        border: Border.all(color: textColor.withValues(alpha: 0.2), width: 2),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,

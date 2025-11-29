@@ -210,13 +210,6 @@ class _RecordingDetailBottomSheetState extends State<RecordingDetailBottomSheet>
       ),
       child: Column(
         children: [
-          // Drag handle
-          Container(
-            margin: const EdgeInsets.symmetric(vertical: 12),
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(color: textColor.withOpacity(0.3)),
-          ),
 
           // Header - collapsed or expanded
           AnimatedContainer(

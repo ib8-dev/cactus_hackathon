@@ -15,7 +15,6 @@ class TranscriptionService {
       // Transcribe the audio file
       final transcription = await _cactusSTT.transcribe(
         filePath: audioFilePath,
-
         params: SpeechRecognitionParams(),
       );
 
@@ -23,6 +22,29 @@ class TranscriptionService {
     } catch (e) {
       print('Error transcribing audio: $e');
       return '';
+    }
+  }
+
+  /// Transcribes an audio file and returns the full result with segments
+  static Future<SpeechRecognitionResult?> transcribeAudioWithSegments(
+    String audioFilePath,
+  ) async {
+    try {
+      print('Starting transcription with segments for: $audioFilePath');
+
+      // Initialize STT model if not already loaded
+      await _cactusSTT.init(model: CactusController.sttModel);
+
+      // Transcribe the audio file with segments
+      final transcription = await _cactusSTT.transcribe(
+        filePath: audioFilePath,
+        params: SpeechRecognitionParams(),
+      );
+
+      return transcription;
+    } catch (e) {
+      print('Error transcribing audio: $e');
+      return null;
     }
   }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'call_recording.dart';
 import 'link_audio_dialog.dart';
+import 'recording_detail_bottom_sheet.dart';
 
 class AudioFilesScreen extends StatefulWidget {
   final List<CallRecording> audioFiles;
@@ -20,6 +21,17 @@ class AudioFilesScreen extends StatefulWidget {
 }
 
 class _AudioFilesScreenState extends State<AudioFilesScreen> {
+  void _showDetailSheet(CallRecording file) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      isDismissible: true,
+      enableDrag: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => RecordingDetailBottomSheet(recording: file),
+    );
+  }
+
   void _showLinkDialog(CallRecording file) async {
     final result = await showModalBottomSheet<LinkResult>(
       context: context,
@@ -98,20 +110,20 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
                   Icon(
                     Icons.music_note_outlined,
                     size: 64,
-                    color: textColor.withOpacity(0.3),
+                    color: textColor.withValues(alpha: 0.3),
                   ),
                   const SizedBox(height: 16),
                   Text(
                     'No recordings yet',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: textColor.withOpacity(0.5),
+                      color: textColor.withValues(alpha: 0.5),
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'Share audio files to this app',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: textColor.withOpacity(0.4),
+                      color: textColor.withValues(alpha: 0.4),
                       fontSize: 12,
                     ),
                   ),
@@ -140,12 +152,15 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
                   },
                   child: Container(
                     margin: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 4,
+                      horizontal: 12,
+                      vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      border: Border.all(color: textColor.withOpacity(0.2)),
-                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(
+                        color: textColor.withValues(alpha: 0.2),
+                        width: 2,
+                      ),
+                      borderRadius: BorderRadius.circular(0),
                     ),
                     child: file.callLogNumber != null
                         ? _buildCallLogCard(file, textColor, accentColor)
@@ -164,6 +179,9 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
     Color textColor,
     Color accentColor,
   ) {
+    final isProcessed = file.transcription.target != null;
+    final iconColor = isProcessed ? accentColor : textColor.withValues(alpha: 0.3);
+
     IconData iconData;
 
     switch (file.callLogType) {
@@ -184,13 +202,14 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
     }
 
     return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      leading: Icon(iconData, color: textColor, size: 24),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      leading: Icon(iconData, color: iconColor, size: 20),
       title: Text(
-        file.displayName,
+        file.displayName.toUpperCase(),
         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-          fontWeight: FontWeight.w500,
-          fontSize: 14,
+          fontWeight: FontWeight.bold,
+          fontSize: 13,
+          letterSpacing: 0.5,
         ),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
@@ -205,7 +224,7 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
               Text(
                 file.callLogNumber!,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: textColor.withOpacity(0.6),
+                  color: textColor.withValues(alpha: 0.6),
                   fontSize: 11,
                 ),
               ),
@@ -217,13 +236,13 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
                   Icon(
                     Icons.timer_outlined,
                     size: 11,
-                    color: textColor.withOpacity(0.6),
+                    color: textColor.withValues(alpha: 0.6),
                   ),
                   const SizedBox(width: 4),
                   Text(
                     _formatDuration(file.callLogDuration!),
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: textColor.withOpacity(0.6),
+                      color: textColor.withValues(alpha: 0.6),
                       fontSize: 11,
                     ),
                   ),
@@ -231,14 +250,14 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 6),
                     child: Text(
                       '•',
-                      style: TextStyle(color: textColor.withOpacity(0.6)),
+                      style: TextStyle(color: textColor.withValues(alpha: 0.6)),
                     ),
                   ),
                 ],
                 Text(
                   _formatCallTime(file.callLogTimestamp),
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: textColor.withOpacity(0.6),
+                    color: textColor.withValues(alpha: 0.6),
                     fontSize: 11,
                   ),
                 ),
@@ -248,10 +267,10 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
         ),
       ),
       trailing: IconButton(
-        icon: Icon(Icons.link, color: accentColor),
+        icon: Icon(Icons.link, color: iconColor),
         onPressed: () => _showLinkDialog(file),
       ),
-      onTap: () => _showLinkDialog(file),
+      onTap: () => isProcessed ? _showDetailSheet(file) : _showLinkDialog(file),
     );
   }
 
@@ -260,17 +279,20 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
     Color textColor,
     Color accentColor,
   ) {
+    final isProcessed = file.transcription.target != null;
+    final avatarColor = isProcessed ? accentColor : textColor.withValues(alpha: 0.3);
+
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       leading: CircleAvatar(
-        backgroundColor: accentColor.withOpacity(0.1),
+        backgroundColor: avatarColor.withValues(alpha: 0.1),
         radius: 24,
         child: Text(
           file.contactDisplayName != null && file.contactDisplayName!.isNotEmpty
               ? file.contactDisplayName![0].toUpperCase()
               : '?',
           style: TextStyle(
-            color: accentColor,
+            color: avatarColor,
             fontSize: 18,
             fontWeight: FontWeight.w500,
           ),
@@ -294,7 +316,7 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
               Text(
                 file.contactPhoneNumber!,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: textColor.withOpacity(0.6),
+                  color: textColor.withValues(alpha: 0.6),
                   fontSize: 11,
                 ),
               ),
@@ -305,13 +327,13 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
                 Icon(
                   Icons.audiotrack,
                   size: 11,
-                  color: textColor.withOpacity(0.6),
+                  color: textColor.withValues(alpha: 0.6),
                 ),
                 const SizedBox(width: 4),
                 Text(
                   _formatFileSize(file.size),
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: textColor.withOpacity(0.6),
+                    color: textColor.withValues(alpha: 0.6),
                     fontSize: 11,
                   ),
                 ),
@@ -319,13 +341,13 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 6),
                   child: Text(
                     '•',
-                    style: TextStyle(color: textColor.withOpacity(0.6)),
+                    style: TextStyle(color: textColor.withValues(alpha: 0.6)),
                   ),
                 ),
                 Text(
                   _formatDate(file.dateReceived),
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: textColor.withOpacity(0.6),
+                    color: textColor.withValues(alpha: 0.6),
                     fontSize: 11,
                   ),
                 ),
@@ -335,10 +357,10 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
         ),
       ),
       trailing: IconButton(
-        icon: Icon(Icons.link, color: accentColor),
+        icon: Icon(Icons.link, color: avatarColor),
         onPressed: () => _showLinkDialog(file),
       ),
-      onTap: () => _showLinkDialog(file),
+      onTap: () => isProcessed ? _showDetailSheet(file) : _showLinkDialog(file),
     );
   }
 
@@ -347,16 +369,19 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
     Color textColor,
     Color accentColor,
   ) {
+    final isProcessed = file.transcription.target != null;
+    final iconColor = isProcessed ? accentColor : textColor.withValues(alpha: 0.3);
+
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       leading: Container(
         width: 48,
         height: 48,
         decoration: BoxDecoration(
-          color: accentColor.withOpacity(0.1),
+          color: iconColor.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(4),
         ),
-        child: Icon(Icons.audiotrack, color: accentColor),
+        child: Icon(Icons.audiotrack, color: iconColor),
       ),
       title: Text(
         file.fileName,
@@ -374,7 +399,7 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
             Text(
               _formatFileSize(file.size),
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: textColor.withOpacity(0.6),
+                color: textColor.withValues(alpha: 0.6),
                 fontSize: 11,
               ),
             ),
@@ -382,13 +407,13 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 6),
               child: Text(
                 '•',
-                style: TextStyle(color: textColor.withOpacity(0.6)),
+                style: TextStyle(color: textColor.withValues(alpha: 0.6)),
               ),
             ),
             Text(
               _formatDate(file.dateReceived),
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: textColor.withOpacity(0.6),
+                color: textColor.withValues(alpha: 0.6),
                 fontSize: 11,
               ),
             ),
@@ -396,10 +421,10 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
         ),
       ),
       trailing: IconButton(
-        icon: Icon(Icons.link_off, color: textColor.withOpacity(0.4)),
+        icon: Icon(Icons.link_off, color: textColor.withValues(alpha: 0.4)),
         onPressed: () => _showLinkDialog(file),
       ),
-      onTap: () => _showLinkDialog(file),
+      onTap: () => isProcessed ? _showDetailSheet(file) : _showLinkDialog(file),
     );
   }
 

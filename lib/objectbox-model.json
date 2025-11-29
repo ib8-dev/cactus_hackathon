@@ -5,7 +5,7 @@
   "entities": [
     {
       "id": "1:1129777401934766731",
-      "lastPropertyId": "14:1640598700276949746",
+      "lastPropertyId": "18:1542662358134272479",
       "name": "CallRecording",
       "properties": [
         {
@@ -70,28 +70,98 @@
           "type": 9
         },
         {
-          "id": "13:3206435324609867733",
-          "name": "transcription",
+          "id": "15:3206872270662915398",
+          "name": "summary",
           "type": 9
         },
         {
-          "id": "14:1640598700276949746",
-          "name": "isTranscribed",
+          "id": "16:5019509352335271350",
+          "name": "isSummarized",
           "type": 1
+        },
+        {
+          "id": "17:4467617504955635511",
+          "name": "isVectorized",
+          "type": 1
+        },
+        {
+          "id": "18:1542662358134272479",
+          "name": "transcriptionId",
+          "indexId": "1:3553733258145972750",
+          "type": 11,
+          "flags": 520,
+          "relationTarget": "Transcription"
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "2:5997333617814549602",
+      "lastPropertyId": "2:3624769585747519849",
+      "name": "Transcription",
+      "properties": [
+        {
+          "id": "1:7238597987244518746",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:3624769585747519849",
+          "name": "fullText",
+          "type": 9
+        }
+      ],
+      "relations": [
+        {
+          "id": "1:3839041035632917224",
+          "name": "segments",
+          "targetId": "3:5540166720134433378"
+        }
+      ]
+    },
+    {
+      "id": "3:5540166720134433378",
+      "lastPropertyId": "4:7961878321535195645",
+      "name": "TranscriptionSegment",
+      "properties": [
+        {
+          "id": "1:6169050643238046542",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:8691558193173316776",
+          "name": "start",
+          "type": 6
+        },
+        {
+          "id": "3:3391235606172649556",
+          "name": "end",
+          "type": 6
+        },
+        {
+          "id": "4:7961878321535195645",
+          "name": "text",
+          "type": 9
         }
       ],
       "relations": []
     }
   ],
-  "lastEntityId": "1:1129777401934766731",
-  "lastIndexId": "0:0",
-  "lastRelationId": "0:0",
+  "lastEntityId": "3:5540166720134433378",
+  "lastIndexId": "1:3553733258145972750",
+  "lastRelationId": "1:3839041035632917224",
   "lastSequenceId": "0:0",
   "modelVersion": 5,
   "modelVersionParserMinimum": 5,
   "retiredEntityUids": [],
   "retiredIndexUids": [],
-  "retiredPropertyUids": [],
+  "retiredPropertyUids": [
+    3206435324609867733,
+    1640598700276949746
+  ],
   "retiredRelationUids": [],
   "version": 1
 }

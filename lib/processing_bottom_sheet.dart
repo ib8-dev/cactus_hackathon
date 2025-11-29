@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_intent/call_recording.dart';
 import 'package:flutter_intent/transcription_service.dart';
 import 'package:flutter_intent/objectbox_service.dart';
+import 'package:flutter_intent/transcription.dart';
+import 'package:cactus/cactus.dart';
 
 enum ProcessingStep {
   linking,
@@ -9,6 +11,7 @@ enum ProcessingStep {
   summarizing,
   vectorizing,
   completed,
+  failed,
 }
 
 class ProcessingBottomSheet extends StatefulWidget {
@@ -27,8 +30,9 @@ class ProcessingBottomSheet extends StatefulWidget {
 
 class _ProcessingBottomSheetState extends State<ProcessingBottomSheet>
     with SingleTickerProviderStateMixin {
-  ProcessingStep _currentStep = ProcessingStep.linking;
-  String _statusMessage = 'Linking audio...';
+  late ProcessingStep _currentStep;
+  ProcessingStep? _failedStep;
+  late String _statusMessage;
   CallRecording? _updatedRecording;
   late AnimationController _animationController;
 
@@ -40,7 +44,51 @@ class _ProcessingBottomSheetState extends State<ProcessingBottomSheet>
       duration: const Duration(milliseconds: 1500),
     )..repeat();
     _updatedRecording = widget.recording;
+
+    // Determine the starting step based on what's already completed
+    _currentStep = _determineStartingStep();
+    _statusMessage = _getStatusMessage(_currentStep);
+
     _startProcessing();
+  }
+
+  ProcessingStep _determineStartingStep() {
+    final recording = widget.recording;
+
+    // Check in reverse order: if vectorized, we're done
+    if (recording.isVectorized) {
+      return ProcessingStep.completed;
+    }
+
+    // If summarized but not vectorized, start from vectorize
+    if (recording.isSummarized) {
+      return ProcessingStep.vectorizing;
+    }
+
+    // If transcribed but not summarized, start from summarize
+    if (recording.transcription.target != null) {
+      return ProcessingStep.summarizing;
+    }
+
+    // Otherwise start from transcribe
+    return ProcessingStep.transcribing;
+  }
+
+  String _getStatusMessage(ProcessingStep step) {
+    switch (step) {
+      case ProcessingStep.linking:
+        return 'Linking audio...';
+      case ProcessingStep.transcribing:
+        return 'Transcribing audio...';
+      case ProcessingStep.summarizing:
+        return 'Summarizing transcription...';
+      case ProcessingStep.vectorizing:
+        return 'Creating vectors for search...';
+      case ProcessingStep.completed:
+        return 'Processing complete!';
+      case ProcessingStep.failed:
+        return 'Processing failed';
+    }
   }
 
   @override
@@ -50,28 +98,79 @@ class _ProcessingBottomSheetState extends State<ProcessingBottomSheet>
   }
 
   Future<void> _startProcessing() async {
-    // Step 1: Linking (already done, just show it)
-    await Future.delayed(const Duration(milliseconds: 500));
-    _updateStep(ProcessingStep.transcribing, 'Transcribing audio...');
+    setState(() {
+      _failedStep = null;
+    });
 
-    // Step 2: Transcribe
-    await _transcribe();
+    try {
+      // Step 1: Linking (already done, just show it)
+      if (_currentStep.index <= ProcessingStep.linking.index) {
+        await Future.delayed(const Duration(milliseconds: 500));
+        _updateStep(ProcessingStep.transcribing, 'Transcribing audio...');
+      }
 
-    // Step 3: Summarize
-    _updateStep(ProcessingStep.summarizing, 'Summarizing transcription...');
-    await _summarize();
+      // Step 2: Transcribe
+      if (_currentStep.index <= ProcessingStep.transcribing.index) {
+        final success = await _transcribe();
+        if (!success) {
+          _handleError(ProcessingStep.transcribing, 'Transcription failed');
+          return;
+        }
+        _updateStep(ProcessingStep.summarizing, 'Summarizing transcription...');
+      }
 
-    // Step 4: Vectorize
-    _updateStep(ProcessingStep.vectorizing, 'Creating vectors for search...');
-    await _vectorize();
+      // Step 3: Summarize
+      if (_currentStep.index <= ProcessingStep.summarizing.index) {
+        final success = await _summarize();
+        if (!success) {
+          _handleError(ProcessingStep.summarizing, 'Summarization failed');
+          return;
+        }
+        _updateStep(
+          ProcessingStep.vectorizing,
+          'Creating vectors for search...',
+        );
+      }
 
-    // Completed
-    _updateStep(ProcessingStep.completed, 'Processing complete!');
-    await Future.delayed(const Duration(milliseconds: 1000));
+      // Step 4: Vectorize
+      if (_currentStep.index <= ProcessingStep.vectorizing.index) {
+        final success = await _vectorize();
+        if (!success) {
+          _handleError(ProcessingStep.vectorizing, 'Vectorization failed');
+          return;
+        }
+      }
 
+      // Completed
+      _updateStep(ProcessingStep.completed, 'Processing complete!');
+      await Future.delayed(const Duration(milliseconds: 1000));
+
+      if (mounted) {
+        widget.onComplete();
+        Navigator.of(context).pop(_updatedRecording);
+      }
+    } catch (e) {
+      _handleError(_currentStep, 'An unexpected error occurred');
+    }
+  }
+
+  void _handleError(ProcessingStep failedAt, String message) {
     if (mounted) {
-      widget.onComplete();
-      Navigator.of(context).pop(_updatedRecording);
+      setState(() {
+        _currentStep = ProcessingStep.failed;
+        _failedStep = failedAt;
+        _statusMessage = message;
+      });
+    }
+  }
+
+  void _retry() {
+    // Reset to the failed step and restart
+    if (_failedStep != null) {
+      setState(() {
+        _currentStep = _failedStep!;
+      });
+      _startProcessing();
     }
   }
 
@@ -84,47 +183,79 @@ class _ProcessingBottomSheetState extends State<ProcessingBottomSheet>
     }
   }
 
-  Future<void> _transcribe() async {
+  Future<bool> _transcribe() async {
     try {
-      final transcription = await TranscriptionService.transcribeAudio(
+      // Skip if already transcribed
+      if (_updatedRecording!.transcription.target != null) {
+        return true;
+      }
+
+      final result = await TranscriptionService.transcribeAudioWithSegments(
         _updatedRecording!.filePath,
       );
 
-      if (transcription.isNotEmpty) {
-        _updatedRecording = CallRecording(
-          id: _updatedRecording!.id,
-          filePath: _updatedRecording!.filePath,
-          fileName: _updatedRecording!.fileName,
-          dateReceived: _updatedRecording!.dateReceived,
-          size: _updatedRecording!.size,
-          transcription: transcription,
-          isTranscribed: true,
-          callLogName: _updatedRecording!.callLogName,
-          callLogNumber: _updatedRecording!.callLogNumber,
-          callLogTimestamp: _updatedRecording!.callLogTimestamp,
-          callLogDuration: _updatedRecording!.callLogDuration,
-          callLogType: _updatedRecording!.callLogType,
-          contactDisplayName: _updatedRecording!.contactDisplayName,
-          contactPhoneNumber: _updatedRecording!.contactPhoneNumber,
-        );
-
-        // Save to ObjectBox
-        final objectBox = ObjectBoxService.instance;
-        objectBox.updateCallRecording(_updatedRecording!);
+      if (result == null || result.text.isEmpty) {
+        return false;
       }
+
+      // Create Transcription entity with segments
+      final transcription = Transcription(fullText: result.text);
+
+      // Add segments if available
+      if (result.segments != null) {
+        for (var segment in result.segments!) {
+          final transcriptionSegment = TranscriptionSegment(
+            start: segment.startTime,
+            end: segment.endTime,
+            text: segment.text,
+          );
+          transcription.segments.add(transcriptionSegment);
+        }
+      }
+
+      // Update the recording with the transcription
+      _updatedRecording!.transcription.target = transcription;
+
+      // Save to ObjectBox
+      final objectBox = ObjectBoxService.instance;
+      objectBox.updateCallRecording(_updatedRecording!);
+      return true;
     } catch (e) {
       print('Error during transcription: $e');
+      return false;
     }
   }
 
-  Future<void> _summarize() async {
-    // TODO: Implement summarization using Cactus LM
-    await Future.delayed(const Duration(seconds: 2));
+  Future<bool> _summarize() async {
+    try {
+      // Skip if already summarized
+      if (_updatedRecording!.isSummarized) {
+        return true;
+      }
+
+      // TODO: Implement summarization using Cactus LM
+      // For now, skip this step and return true
+      return true;
+    } catch (e) {
+      print('Error during summarization: $e');
+      return false;
+    }
   }
 
-  Future<void> _vectorize() async {
-    // TODO: Implement vectorization for RAG
-    await Future.delayed(const Duration(seconds: 1));
+  Future<bool> _vectorize() async {
+    try {
+      // Skip if already vectorized
+      if (_updatedRecording!.isVectorized) {
+        return true;
+      }
+
+      // TODO: Implement vectorization for RAG
+      // For now, skip this step and return true
+      return true;
+    } catch (e) {
+      print('Error during vectorization: $e');
+      return false;
+    }
   }
 
   @override
@@ -187,12 +318,40 @@ class _ProcessingBottomSheetState extends State<ProcessingBottomSheet>
           Text(
             _statusMessage,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: textColor.withOpacity(0.6),
-                  fontSize: 12,
-                ),
+              color: _currentStep == ProcessingStep.failed
+                  ? accentColor
+                  : textColor.withValues(alpha: 0.6),
+              fontSize: 12,
+            ),
           ),
 
           const SizedBox(height: 24),
+
+          // Retry button if failed
+          if (_currentStep == ProcessingStep.failed) ...[
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: _retry,
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: accentColor, width: 2),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(0),
+                  ),
+                ),
+                child: Text(
+                  'RETRY',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: accentColor,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
         ],
       ),
     );
@@ -205,21 +364,31 @@ class _ProcessingBottomSheetState extends State<ProcessingBottomSheet>
     Color textColor,
     Color accentColor,
   ) {
-    final isCompleted = step.index < _currentStep.index;
-    final isCurrent = step == _currentStep;
+    final isCompleted =
+        step.index < _currentStep.index ||
+        (_failedStep != null &&
+            step.index < _failedStep!.index &&
+            _currentStep == ProcessingStep.failed);
+    final isCurrent =
+        step == _currentStep && _currentStep != ProcessingStep.failed;
+    final isFailed =
+        _failedStep == step && _currentStep == ProcessingStep.failed;
 
     Color iconColor;
     Color labelColor;
 
-    if (isCompleted) {
+    if (isFailed) {
+      iconColor = accentColor;
+      labelColor = accentColor;
+    } else if (isCompleted) {
       iconColor = accentColor;
       labelColor = textColor;
     } else if (isCurrent) {
       iconColor = accentColor;
       labelColor = accentColor;
     } else {
-      iconColor = textColor.withOpacity(0.3);
-      labelColor = textColor.withOpacity(0.3);
+      iconColor = textColor.withValues(alpha: 0.3);
+      labelColor = textColor.withValues(alpha: 0.3);
     }
 
     return Row(
@@ -232,17 +401,19 @@ class _ProcessingBottomSheetState extends State<ProcessingBottomSheet>
             border: Border.all(
               color: isCompleted || isCurrent
                   ? accentColor
-                  : textColor.withOpacity(0.3),
+                  : textColor.withValues(alpha: 0.3),
               width: 2,
             ),
             shape: BoxShape.circle,
           ),
           child: Center(
-            child: isCompleted
+            child: isFailed
+                ? Icon(Icons.close, color: accentColor, size: 20)
+                : isCompleted
                 ? Icon(Icons.check, color: accentColor, size: 20)
                 : isCurrent
-                    ? _buildDottedLoader(accentColor)
-                    : Icon(icon, color: iconColor, size: 20),
+                ? _buildDottedLoader(accentColor)
+                : Icon(icon, color: iconColor, size: 20),
           ),
         ),
         const SizedBox(width: 16),
@@ -250,10 +421,10 @@ class _ProcessingBottomSheetState extends State<ProcessingBottomSheet>
         Text(
           label,
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: labelColor,
-                fontWeight: isCurrent ? FontWeight.w500 : FontWeight.normal,
-                fontSize: 14,
-              ),
+            color: labelColor,
+            fontWeight: isCurrent ? FontWeight.w500 : FontWeight.normal,
+            fontSize: 14,
+          ),
         ),
       ],
     );
@@ -266,7 +437,7 @@ class _ProcessingBottomSheetState extends State<ProcessingBottomSheet>
       margin: const EdgeInsets.only(left: 19),
       width: 2,
       height: 24,
-      color: isCompleted ? accentColor : textColor.withOpacity(0.3),
+      color: isCompleted ? accentColor : textColor.withValues(alpha: 0.3),
     );
   }
 
@@ -279,7 +450,10 @@ class _ProcessingBottomSheetState extends State<ProcessingBottomSheet>
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(3, (index) {
             final delay = index * 0.2;
-            final dotValue = (_animationController.value - delay).clamp(0.0, 1.0);
+            final dotValue = (_animationController.value - delay).clamp(
+              0.0,
+              1.0,
+            );
             final opacity = (dotValue * 2).clamp(0.0, 1.0);
 
             return Padding(
@@ -288,7 +462,7 @@ class _ProcessingBottomSheetState extends State<ProcessingBottomSheet>
                 width: 4,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: accentColor.withOpacity(opacity),
+                  color: accentColor.withValues(alpha: opacity),
                   shape: BoxShape.circle,
                 ),
               ),

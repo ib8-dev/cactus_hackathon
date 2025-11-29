@@ -94,7 +94,9 @@ class _HomeScreenState extends State<HomeScreen> {
         // Copy file to app directory
         try {
           print('Copying file to app directory...');
-          final newFilePath = await FileService.copyFileToAppDirectory(file.path);
+          final newFilePath = await FileService.copyFileToAppDirectory(
+            file.path,
+          );
           print('File copied to: $newFilePath');
 
           // Create CallRecording object
@@ -133,7 +135,6 @@ class _HomeScreenState extends State<HomeScreen> {
             fileName: recording.fileName,
             dateReceived: recording.dateReceived,
             size: recording.size,
-            isTranscribed: false,
             callLogName: recording.callLogName,
             callLogNumber: recording.callLogNumber,
             callLogTimestamp: recording.callLogTimestamp,
@@ -153,21 +154,24 @@ class _HomeScreenState extends State<HomeScreen> {
 
           // Show processing bottom sheet
           if (mounted) {
-            final processedRecording = await showModalBottomSheet<CallRecording>(
-              context: context,
-              isDismissible: false,
-              enableDrag: false,
-              backgroundColor: Colors.transparent,
-              builder: (context) => ProcessingBottomSheet(
-                recording: recording,
-                onComplete: () {},
-              ),
-            );
+            final processedRecording =
+                await showModalBottomSheet<CallRecording>(
+                  context: context,
+                  isDismissible: false,
+                  enableDrag: false,
+                  backgroundColor: Colors.transparent,
+                  builder: (context) => ProcessingBottomSheet(
+                    recording: recording,
+                    onComplete: () {},
+                  ),
+                );
 
             // Update the recording in the list with processed version
             if (processedRecording != null && mounted) {
               setState(() {
-                final index = _audioFiles.indexWhere((r) => r.id == recording.id);
+                final index = _audioFiles.indexWhere(
+                  (r) => r.id == recording.id,
+                );
                 if (index != -1) {
                   _audioFiles[index] = processedRecording;
                 }
@@ -177,9 +181,9 @@ class _HomeScreenState extends State<HomeScreen> {
         } catch (e) {
           print('Error processing file: $e');
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Error saving file: $e')),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text('Error saving file: $e')));
           }
         }
       }

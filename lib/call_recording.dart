@@ -1,6 +1,7 @@
 import 'package:call_log/call_log.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:objectbox/objectbox.dart';
+import 'transcription.dart';
 
 @Entity()
 class CallRecording {
@@ -16,8 +17,14 @@ class CallRecording {
   final int size;
 
   // Transcription and processing
-  final String? transcription;
-  final bool isTranscribed;
+  final transcription = ToOne<Transcription>();
+
+  // Summarization
+  final String? summary;
+  final bool isSummarized;
+
+  // Vectorization
+  final bool isVectorized;
 
   // Store call log data as separate fields since CallLogEntry can't be stored directly
   final String? callLogName;
@@ -36,8 +43,9 @@ class CallRecording {
     required this.fileName,
     required this.dateReceived,
     required this.size,
-    this.transcription,
-    this.isTranscribed = false,
+    this.summary,
+    this.isSummarized = false,
+    this.isVectorized = false,
     this.callLogName,
     this.callLogNumber,
     this.callLogTimestamp,
@@ -81,8 +89,9 @@ class CallRecording {
     required DateTime dateReceived,
     required int size,
     required CallLogEntry callLog,
-    String? transcription,
-    bool isTranscribed = false,
+    String? summary,
+    bool isSummarized = false,
+    bool isVectorized = false,
   }) {
     return CallRecording(
       id: id,
@@ -90,8 +99,9 @@ class CallRecording {
       fileName: fileName,
       dateReceived: dateReceived,
       size: size,
-      transcription: transcription,
-      isTranscribed: isTranscribed,
+      summary: summary,
+      isSummarized: isSummarized,
+      isVectorized: isVectorized,
       callLogName: callLog.name,
       callLogNumber: callLog.number,
       callLogTimestamp: callLog.timestamp,
@@ -108,8 +118,9 @@ class CallRecording {
     required DateTime dateReceived,
     required int size,
     required Contact contact,
-    String? transcription,
-    bool isTranscribed = false,
+    String? summary,
+    bool isSummarized = false,
+    bool isVectorized = false,
   }) {
     return CallRecording(
       id: id,
@@ -117,8 +128,9 @@ class CallRecording {
       fileName: fileName,
       dateReceived: dateReceived,
       size: size,
-      transcription: transcription,
-      isTranscribed: isTranscribed,
+      summary: summary,
+      isSummarized: isSummarized,
+      isVectorized: isVectorized,
       contactDisplayName: contact.displayName,
       contactPhoneNumber: contact.phones.isNotEmpty ? contact.phones.first.number : null,
     )..contact = contact;

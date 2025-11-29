@@ -15,6 +15,7 @@ import 'package:objectbox/objectbox.dart' as obx;
 import 'package:objectbox_flutter_libs/objectbox_flutter_libs.dart';
 
 import 'call_recording.dart';
+import 'transcription.dart';
 
 export 'package:objectbox/objectbox.dart'; // so that callers only have to import this file
 
@@ -22,7 +23,7 @@ final _entities = <obx_int.ModelEntity>[
   obx_int.ModelEntity(
     id: const obx_int.IdUid(1, 1129777401934766731),
     name: 'CallRecording',
-    lastPropertyId: const obx_int.IdUid(14, 1640598700276949746),
+    lastPropertyId: const obx_int.IdUid(18, 1542662358134272479),
     flags: 0,
     properties: <obx_int.ModelProperty>[
       obx_int.ModelProperty(
@@ -98,15 +99,92 @@ final _entities = <obx_int.ModelEntity>[
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(13, 3206435324609867733),
-        name: 'transcription',
+        id: const obx_int.IdUid(15, 3206872270662915398),
+        name: 'summary',
         type: 9,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(14, 1640598700276949746),
-        name: 'isTranscribed',
+        id: const obx_int.IdUid(16, 5019509352335271350),
+        name: 'isSummarized',
         type: 1,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(17, 4467617504955635511),
+        name: 'isVectorized',
+        type: 1,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(18, 1542662358134272479),
+        name: 'transcriptionId',
+        type: 11,
+        flags: 520,
+        indexId: const obx_int.IdUid(1, 3553733258145972750),
+        relationField: 'transcription',
+        relationTarget: 'Transcription',
+      ),
+    ],
+    relations: <obx_int.ModelRelation>[],
+    backlinks: <obx_int.ModelBacklink>[],
+  ),
+  obx_int.ModelEntity(
+    id: const obx_int.IdUid(2, 5997333617814549602),
+    name: 'Transcription',
+    lastPropertyId: const obx_int.IdUid(2, 3624769585747519849),
+    flags: 0,
+    properties: <obx_int.ModelProperty>[
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(1, 7238597987244518746),
+        name: 'id',
+        type: 6,
+        flags: 1,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(2, 3624769585747519849),
+        name: 'fullText',
+        type: 9,
+        flags: 0,
+      ),
+    ],
+    relations: <obx_int.ModelRelation>[
+      obx_int.ModelRelation(
+        id: const obx_int.IdUid(1, 3839041035632917224),
+        name: 'segments',
+        targetId: const obx_int.IdUid(3, 5540166720134433378),
+      ),
+    ],
+    backlinks: <obx_int.ModelBacklink>[],
+  ),
+  obx_int.ModelEntity(
+    id: const obx_int.IdUid(3, 5540166720134433378),
+    name: 'TranscriptionSegment',
+    lastPropertyId: const obx_int.IdUid(4, 7961878321535195645),
+    flags: 0,
+    properties: <obx_int.ModelProperty>[
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(1, 6169050643238046542),
+        name: 'id',
+        type: 6,
+        flags: 1,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(2, 8691558193173316776),
+        name: 'start',
+        type: 6,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(3, 3391235606172649556),
+        name: 'end',
+        type: 6,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(4, 7961878321535195645),
+        name: 'text',
+        type: 9,
         flags: 0,
       ),
     ],
@@ -153,13 +231,13 @@ Future<obx.Store> openStore({
 obx_int.ModelDefinition getObjectBoxModel() {
   final model = obx_int.ModelInfo(
     entities: _entities,
-    lastEntityId: const obx_int.IdUid(1, 1129777401934766731),
-    lastIndexId: const obx_int.IdUid(0, 0),
-    lastRelationId: const obx_int.IdUid(0, 0),
+    lastEntityId: const obx_int.IdUid(3, 5540166720134433378),
+    lastIndexId: const obx_int.IdUid(1, 3553733258145972750),
+    lastRelationId: const obx_int.IdUid(1, 3839041035632917224),
     lastSequenceId: const obx_int.IdUid(0, 0),
     retiredEntityUids: const [],
     retiredIndexUids: const [],
-    retiredPropertyUids: const [],
+    retiredPropertyUids: const [3206435324609867733, 1640598700276949746],
     retiredRelationUids: const [],
     modelVersion: 5,
     modelVersionParserMinimum: 5,
@@ -169,7 +247,7 @@ obx_int.ModelDefinition getObjectBoxModel() {
   final bindings = <Type, obx_int.EntityDefinition>{
     CallRecording: obx_int.EntityDefinition<CallRecording>(
       model: _entities[0],
-      toOneRelations: (CallRecording object) => [],
+      toOneRelations: (CallRecording object) => [object.transcription],
       toManyRelations: (CallRecording object) => {},
       getId: (CallRecording object) => object.id,
       setId: (CallRecording object, int id) {
@@ -193,10 +271,10 @@ obx_int.ModelDefinition getObjectBoxModel() {
         final contactPhoneNumberOffset = object.contactPhoneNumber == null
             ? null
             : fbb.writeString(object.contactPhoneNumber!);
-        final transcriptionOffset = object.transcription == null
+        final summaryOffset = object.summary == null
             ? null
-            : fbb.writeString(object.transcription!);
-        fbb.startTable(15);
+            : fbb.writeString(object.summary!);
+        fbb.startTable(19);
         fbb.addInt64(0, object.id);
         fbb.addOffset(1, filePathOffset);
         fbb.addOffset(2, fileNameOffset);
@@ -209,8 +287,10 @@ obx_int.ModelDefinition getObjectBoxModel() {
         fbb.addOffset(9, callLogTypeOffset);
         fbb.addOffset(10, contactDisplayNameOffset);
         fbb.addOffset(11, contactPhoneNumberOffset);
-        fbb.addOffset(12, transcriptionOffset);
-        fbb.addBool(13, object.isTranscribed);
+        fbb.addOffset(14, summaryOffset);
+        fbb.addBool(15, object.isSummarized);
+        fbb.addBool(16, object.isVectorized);
+        fbb.addInt64(17, object.transcription.targetId);
         fbb.finish(fbb.endTable());
         return object.id;
       },
@@ -238,13 +318,19 @@ obx_int.ModelDefinition getObjectBoxModel() {
           12,
           0,
         );
-        final transcriptionParam = const fb.StringReader(
+        final summaryParam = const fb.StringReader(
           asciiOptimization: true,
-        ).vTableGetNullable(buffer, rootOffset, 28);
-        final isTranscribedParam = const fb.BoolReader().vTableGet(
+        ).vTableGetNullable(buffer, rootOffset, 32);
+        final isSummarizedParam = const fb.BoolReader().vTableGet(
           buffer,
           rootOffset,
-          30,
+          34,
+          false,
+        );
+        final isVectorizedParam = const fb.BoolReader().vTableGet(
+          buffer,
+          rootOffset,
+          36,
           false,
         );
         final callLogNameParam = const fb.StringReader(
@@ -278,8 +364,9 @@ obx_int.ModelDefinition getObjectBoxModel() {
           fileName: fileNameParam,
           dateReceived: dateReceivedParam,
           size: sizeParam,
-          transcription: transcriptionParam,
-          isTranscribed: isTranscribedParam,
+          summary: summaryParam,
+          isSummarized: isSummarizedParam,
+          isVectorized: isVectorizedParam,
           callLogName: callLogNameParam,
           callLogNumber: callLogNumberParam,
           callLogTimestamp: callLogTimestampParam,
@@ -287,6 +374,103 @@ obx_int.ModelDefinition getObjectBoxModel() {
           callLogType: callLogTypeParam,
           contactDisplayName: contactDisplayNameParam,
           contactPhoneNumber: contactPhoneNumberParam,
+        );
+        object.transcription.targetId = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          38,
+          0,
+        );
+        object.transcription.attach(store);
+        return object;
+      },
+    ),
+    Transcription: obx_int.EntityDefinition<Transcription>(
+      model: _entities[1],
+      toOneRelations: (Transcription object) => [],
+      toManyRelations: (Transcription object) => {
+        obx_int.RelInfo<Transcription>.toMany(1, object.id): object.segments,
+      },
+      getId: (Transcription object) => object.id,
+      setId: (Transcription object, int id) {
+        object.id = id;
+      },
+      objectToFB: (Transcription object, fb.Builder fbb) {
+        final fullTextOffset = fbb.writeString(object.fullText);
+        fbb.startTable(3);
+        fbb.addInt64(0, object.id);
+        fbb.addOffset(1, fullTextOffset);
+        fbb.finish(fbb.endTable());
+        return object.id;
+      },
+      objectFromFB: (obx.Store store, ByteData fbData) {
+        final buffer = fb.BufferContext(fbData);
+        final rootOffset = buffer.derefObject(0);
+        final idParam = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          4,
+          0,
+        );
+        final fullTextParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 6, '');
+        final object = Transcription(id: idParam, fullText: fullTextParam);
+        obx_int.InternalToManyAccess.setRelInfo<Transcription>(
+          object.segments,
+          store,
+          obx_int.RelInfo<Transcription>.toMany(1, object.id),
+        );
+        return object;
+      },
+    ),
+    TranscriptionSegment: obx_int.EntityDefinition<TranscriptionSegment>(
+      model: _entities[2],
+      toOneRelations: (TranscriptionSegment object) => [],
+      toManyRelations: (TranscriptionSegment object) => {},
+      getId: (TranscriptionSegment object) => object.id,
+      setId: (TranscriptionSegment object, int id) {
+        object.id = id;
+      },
+      objectToFB: (TranscriptionSegment object, fb.Builder fbb) {
+        final textOffset = fbb.writeString(object.text);
+        fbb.startTable(5);
+        fbb.addInt64(0, object.id);
+        fbb.addInt64(1, object.start);
+        fbb.addInt64(2, object.end);
+        fbb.addOffset(3, textOffset);
+        fbb.finish(fbb.endTable());
+        return object.id;
+      },
+      objectFromFB: (obx.Store store, ByteData fbData) {
+        final buffer = fb.BufferContext(fbData);
+        final rootOffset = buffer.derefObject(0);
+        final idParam = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          4,
+          0,
+        );
+        final startParam = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          6,
+          0,
+        );
+        final endParam = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          8,
+          0,
+        );
+        final textParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 10, '');
+        final object = TranscriptionSegment(
+          id: idParam,
+          start: startParam,
+          end: endParam,
+          text: textParam,
         );
 
         return object;
@@ -359,13 +543,66 @@ class CallRecording_ {
     _entities[0].properties[11],
   );
 
-  /// See [CallRecording.transcription].
-  static final transcription = obx.QueryStringProperty<CallRecording>(
+  /// See [CallRecording.summary].
+  static final summary = obx.QueryStringProperty<CallRecording>(
     _entities[0].properties[12],
   );
 
-  /// See [CallRecording.isTranscribed].
-  static final isTranscribed = obx.QueryBooleanProperty<CallRecording>(
+  /// See [CallRecording.isSummarized].
+  static final isSummarized = obx.QueryBooleanProperty<CallRecording>(
     _entities[0].properties[13],
+  );
+
+  /// See [CallRecording.isVectorized].
+  static final isVectorized = obx.QueryBooleanProperty<CallRecording>(
+    _entities[0].properties[14],
+  );
+
+  /// See [CallRecording.transcription].
+  static final transcription =
+      obx.QueryRelationToOne<CallRecording, Transcription>(
+        _entities[0].properties[15],
+      );
+}
+
+/// [Transcription] entity fields to define ObjectBox queries.
+class Transcription_ {
+  /// See [Transcription.id].
+  static final id = obx.QueryIntegerProperty<Transcription>(
+    _entities[1].properties[0],
+  );
+
+  /// See [Transcription.fullText].
+  static final fullText = obx.QueryStringProperty<Transcription>(
+    _entities[1].properties[1],
+  );
+
+  /// see [Transcription.segments]
+  static final segments =
+      obx.QueryRelationToMany<Transcription, TranscriptionSegment>(
+        _entities[1].relations[0],
+      );
+}
+
+/// [TranscriptionSegment] entity fields to define ObjectBox queries.
+class TranscriptionSegment_ {
+  /// See [TranscriptionSegment.id].
+  static final id = obx.QueryIntegerProperty<TranscriptionSegment>(
+    _entities[2].properties[0],
+  );
+
+  /// See [TranscriptionSegment.start].
+  static final start = obx.QueryIntegerProperty<TranscriptionSegment>(
+    _entities[2].properties[1],
+  );
+
+  /// See [TranscriptionSegment.end].
+  static final end = obx.QueryIntegerProperty<TranscriptionSegment>(
+    _entities[2].properties[2],
+  );
+
+  /// See [TranscriptionSegment.text].
+  static final text = obx.QueryStringProperty<TranscriptionSegment>(
+    _entities[2].properties[3],
   );
 }

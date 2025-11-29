@@ -1,0 +1,577 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'call_recording.dart';
+import 'transcription.dart';
+
+class RecordingDetailBottomSheet extends StatefulWidget {
+  final CallRecording recording;
+
+  const RecordingDetailBottomSheet({super.key, required this.recording});
+
+  @override
+  State<RecordingDetailBottomSheet> createState() =>
+      _RecordingDetailBottomSheetState();
+}
+
+class _RecordingDetailBottomSheetState extends State<RecordingDetailBottomSheet>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  late AudioPlayer _audioPlayer;
+  Duration _duration = Duration.zero;
+  Duration _position = Duration.zero;
+  bool _isPlaying = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _audioPlayer = AudioPlayer();
+    _initAudioPlayer();
+  }
+
+  Future<void> _initAudioPlayer() async {
+    try {
+      await _audioPlayer.setSourceDeviceFile(widget.recording.filePath);
+
+      _audioPlayer.onDurationChanged.listen((duration) {
+        if (mounted) {
+          setState(() {
+            _duration = duration;
+          });
+        }
+      });
+
+      _audioPlayer.onPositionChanged.listen((position) {
+        if (mounted) {
+          setState(() {
+            _position = position;
+          });
+        }
+      });
+
+      _audioPlayer.onPlayerStateChanged.listen((state) {
+        if (mounted) {
+          setState(() {
+            _isPlaying = state == PlayerState.playing;
+          });
+        }
+      });
+
+      _audioPlayer.onPlayerComplete.listen((_) {
+        if (mounted) {
+          setState(() {
+            _position = Duration.zero;
+            _isPlaying = false;
+          });
+          _audioPlayer.seek(Duration.zero);
+        }
+      });
+    } catch (e) {
+      print('Error initializing audio player: $e');
+    }
+  }
+
+  @override
+  void dispose() {
+    _audioPlayer.dispose();
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _togglePlayPause() async {
+    if (_isPlaying) {
+      await _audioPlayer.pause();
+    } else {
+      await _audioPlayer.resume();
+    }
+  }
+
+  Future<void> _seekTo(Duration position) async {
+    await _audioPlayer.seek(position);
+  }
+
+  String _formatAudioDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes.remainder(60);
+    final seconds = duration.inSeconds.remainder(60);
+
+    if (hours > 0) {
+      return '$hours:${twoDigits(minutes)}:${twoDigits(seconds)}';
+    }
+    return '${twoDigits(minutes)}:${twoDigits(seconds)}';
+  }
+
+  String _formatDuration(int? seconds) {
+    if (seconds == null) return 'N/A';
+    final duration = Duration(seconds: seconds);
+    final minutes = duration.inMinutes;
+    final secs = duration.inSeconds.remainder(60);
+    return '${minutes}m ${secs}s';
+  }
+
+  String _formatDate(int? timestamp) {
+    if (timestamp == null) return 'N/A';
+    final date = DateTime.fromMillisecondsSinceEpoch(timestamp);
+    return DateFormat('MMM dd, yyyy • HH:mm').format(date);
+  }
+
+  void _copyToClipboard(String text, String label) {
+    Clipboard.setData(ClipboardData(text: text));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$label copied to clipboard'),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final textColor = Theme.of(context).colorScheme.onSurface;
+    final accentColor = Theme.of(context).colorScheme.secondary;
+    final backgroundColor = Theme.of(context).scaffoldBackgroundColor;
+
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.85,
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        border: Border.all(color: textColor.withOpacity(0.2), width: 2),
+      ),
+      child: Column(
+        children: [
+          // Drag handle
+          Container(
+            margin: const EdgeInsets.symmetric(vertical: 12),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(color: textColor.withOpacity(0.3)),
+          ),
+
+          // Header
+          _buildHeader(textColor, accentColor),
+
+          // Tab Bar
+          Container(
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: textColor.withOpacity(0.2), width: 2),
+              ),
+            ),
+            child: TabBar(
+              controller: _tabController,
+              labelColor: accentColor,
+              unselectedLabelColor: textColor.withOpacity(0.5),
+              indicatorColor: accentColor,
+              indicatorWeight: 3,
+              labelStyle: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.2,
+              ),
+              tabs: const [
+                Tab(text: 'SUMMARY'),
+                Tab(text: 'TRANSCRIPTION'),
+              ],
+            ),
+          ),
+
+          // Tab Content
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildSummaryTab(textColor, accentColor),
+                _buildTranscriptionTab(textColor, accentColor),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader(Color textColor, Color accentColor) {
+    final recording = widget.recording;
+    IconData iconData = Icons.audiotrack;
+    String callType = '';
+
+    if (recording.callLogType != null) {
+      switch (recording.callLogType) {
+        case 'incoming':
+          iconData = Icons.call_received;
+          callType = 'INCOMING';
+          break;
+        case 'outgoing':
+          iconData = Icons.call_made;
+          callType = 'OUTGOING';
+          break;
+        case 'missed':
+          iconData = Icons.call_missed;
+          callType = 'MISSED';
+          break;
+        case 'rejected':
+          iconData = Icons.call_end;
+          callType = 'REJECTED';
+          break;
+        default:
+          iconData = Icons.call;
+          callType = 'CALL';
+      }
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: textColor.withOpacity(0.2), width: 2),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Contact/Name
+          Row(
+            children: [
+              Icon(iconData, color: accentColor, size: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  recording.displayName.toUpperCase(),
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    letterSpacing: 0.5,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          // Metadata
+          if (recording.callLogNumber != null ||
+              recording.contactPhoneNumber != null) ...[
+            Text(
+              recording.callLogNumber ?? recording.contactPhoneNumber ?? '',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: textColor.withOpacity(0.6),
+                fontSize: 12,
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+
+          // Call info
+          Wrap(
+            spacing: 12,
+            runSpacing: 8,
+            children: [
+              if (callType.isNotEmpty) _buildMetadataChip(callType, textColor),
+              if (recording.callLogDuration != null)
+                _buildMetadataChip(
+                  _formatDuration(recording.callLogDuration),
+                  textColor,
+                ),
+              if (recording.callLogTimestamp != null)
+                _buildMetadataChip(
+                  _formatDate(recording.callLogTimestamp),
+                  textColor,
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMetadataChip(String label, Color textColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        border: Border.all(color: textColor.withOpacity(0.3), width: 1),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10,
+          color: textColor.withOpacity(0.7),
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSummaryTab(Color textColor, Color accentColor) {
+    final summary = widget.recording.summary;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'SUMMARY',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.2,
+                  color: textColor.withOpacity(0.5),
+                ),
+              ),
+              if (summary != null && summary.isNotEmpty)
+                IconButton(
+                  icon: Icon(Icons.copy, size: 18, color: accentColor),
+                  onPressed: () => _copyToClipboard(summary, 'Summary'),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (summary != null && summary.isNotEmpty)
+            Text(
+              summary,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                fontSize: 14,
+                height: 1.6,
+                color: textColor,
+              ),
+            )
+          else
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 40),
+                child: Text(
+                  'No summary available',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: textColor.withOpacity(0.4),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTranscriptionTab(Color textColor, Color accentColor) {
+    final transcription = widget.recording.transcription.target;
+
+    return Column(
+      children: [
+        // Audio Player
+        _buildAudioPlayer(textColor, accentColor),
+
+        // Transcription Content
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'TRANSCRIPTION',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.2,
+                        color: textColor.withValues(alpha: 0.5),
+                      ),
+                    ),
+                    if (transcription != null)
+                      IconButton(
+                        icon: Icon(Icons.copy, size: 18, color: accentColor),
+                        onPressed: () => _copyToClipboard(
+                          transcription.fullText,
+                          'Transcription',
+                        ),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                if (transcription != null)
+                  _buildSegmentedTranscription(
+                    transcription,
+                    textColor,
+                    accentColor,
+                  )
+                else
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 40),
+                      child: Text(
+                        'No transcription available',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: textColor.withValues(alpha: 0.4),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSegmentedTranscription(
+    Transcription transcription,
+    Color textColor,
+    Color accentColor,
+  ) {
+    if (transcription.segments.isEmpty) {
+      // Fallback to plain text if no segments
+      return Text(
+        transcription.fullText,
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+          fontSize: 13,
+          height: 1.7,
+          color: textColor,
+        ),
+      );
+    }
+
+    // Build inline highlighted text with segments
+    return RichText(
+      text: TextSpan(
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+          fontSize: 13,
+          height: 1.7,
+          color: textColor,
+        ),
+        children: transcription.segments.map((segment) {
+          final isActive = segment.containsPosition(_position);
+
+          return TextSpan(
+            text: segment.text + ' ',
+            style: TextStyle(
+              color: isActive ? accentColor : textColor.withValues(alpha: 0.9),
+              fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildAudioPlayer(Color textColor, Color accentColor) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: textColor.withOpacity(0.2), width: 2),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Label
+          Text(
+            'AUDIO PLAYER',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.2,
+              color: textColor.withOpacity(0.5),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Progress bar
+          SliderTheme(
+            data: SliderThemeData(
+              trackHeight: 2,
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+              activeTrackColor: accentColor,
+              inactiveTrackColor: textColor.withOpacity(0.2),
+              thumbColor: accentColor,
+              overlayColor: accentColor.withOpacity(0.2),
+            ),
+            child: Slider(
+              value: _duration.inMilliseconds > 0
+                  ? _position.inMilliseconds.toDouble().clamp(
+                      0.0,
+                      _duration.inMilliseconds.toDouble(),
+                    )
+                  : 0.0,
+              min: 0,
+              max: _duration.inMilliseconds.toDouble() > 0
+                  ? _duration.inMilliseconds.toDouble()
+                  : 1,
+              onChanged: (value) {
+                _seekTo(Duration(milliseconds: value.toInt()));
+              },
+            ),
+          ),
+
+          // Time indicators
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  _formatAudioDuration(_position),
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontFamily: 'monospace',
+                    color: textColor.withValues(alpha: 0.6),
+                  ),
+                ),
+                Text(
+                  _formatAudioDuration(_duration),
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontFamily: 'monospace',
+                    color: textColor.withValues(alpha: 0.6),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Play/Pause button
+          Center(
+            child: GestureDetector(
+              onTap: _togglePlayPause,
+              child: Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  border: Border.all(color: accentColor, width: 2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  _isPlaying ? Icons.pause : Icons.play_arrow,
+                  color: accentColor,
+                  size: 28,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

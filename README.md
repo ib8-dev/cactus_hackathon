@@ -1,5 +1,7 @@
 # Call (R)
 
+apk: https://drive.google.com/file/d/1A64BLkNXjE5kbPJ2MlBJM35sJMO2NV_Z/view?usp=sharing
+
 **On-device AI-powered call recording assistant for Android**
 
 Call (R) automatically transcribes, summarizes, and indexes your phone conversations - completely offline. Built with Nothing's design language and powered by on-device LLMs.
@@ -102,9 +104,6 @@ Each recording goes through an automated pipeline:
 ### Installation
 
 ```bash
-# Clone the repository
-cd flutter_intent
-
 # Install dependencies
 flutter pub get
 

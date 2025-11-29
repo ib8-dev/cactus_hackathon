@@ -154,6 +154,9 @@ class _RecordingDetailBottomSheetState extends State<RecordingDetailBottomSheet>
           // Header
           _buildHeader(textColor, accentColor),
 
+          // Audio Player (always visible)
+          _buildAudioPlayer(textColor, accentColor),
+
           // Tab Bar
           Container(
             decoration: BoxDecoration(
@@ -185,7 +188,7 @@ class _RecordingDetailBottomSheetState extends State<RecordingDetailBottomSheet>
               controller: _tabController,
               children: [
                 _buildSummaryTab(textColor, accentColor),
-                _buildTranscriptionTab(textColor, accentColor),
+                _buildTranscriptionTabContent(textColor, accentColor),
               ],
             ),
           ),
@@ -225,11 +228,7 @@ class _RecordingDetailBottomSheetState extends State<RecordingDetailBottomSheet>
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: textColor.withOpacity(0.2), width: 2),
-        ),
-      ),
+      decoration: BoxDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -311,6 +310,8 @@ class _RecordingDetailBottomSheetState extends State<RecordingDetailBottomSheet>
   Widget _buildSummaryTab(Color textColor, Color accentColor) {
     final summary = widget.recording.summary;
 
+    print('>>>>>> ${summary}');
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -365,70 +366,54 @@ class _RecordingDetailBottomSheetState extends State<RecordingDetailBottomSheet>
     );
   }
 
-  Widget _buildTranscriptionTab(Color textColor, Color accentColor) {
+  Widget _buildTranscriptionTabContent(Color textColor, Color accentColor) {
     final transcription = widget.recording.transcription.target;
 
-    return Column(
-      children: [
-        // Audio Player
-        _buildAudioPlayer(textColor, accentColor),
-
-        // Transcription Content
-        Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'TRANSCRIPTION',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.2,
-                        color: textColor.withValues(alpha: 0.5),
-                      ),
-                    ),
-                    if (transcription != null)
-                      IconButton(
-                        icon: Icon(Icons.copy, size: 18, color: accentColor),
-                        onPressed: () => _copyToClipboard(
-                          transcription.fullText,
-                          'Transcription',
-                        ),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
-                  ],
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'TRANSCRIPTION',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.2,
+                  color: textColor.withValues(alpha: 0.5),
                 ),
-                const SizedBox(height: 16),
-                if (transcription != null)
-                  _buildSegmentedTranscription(
-                    transcription,
-                    textColor,
-                    accentColor,
-                  )
-                else
-                  Center(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 40),
-                      child: Text(
-                        'No transcription available',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: textColor.withValues(alpha: 0.4),
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
+              ),
+              if (transcription != null)
+                IconButton(
+                  icon: Icon(Icons.copy, size: 18, color: accentColor),
+                  onPressed: () =>
+                      _copyToClipboard(transcription.fullText, 'Transcription'),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+            ],
           ),
-        ),
-      ],
+          const SizedBox(height: 16),
+          if (transcription != null)
+            _buildSegmentedTranscription(transcription, textColor, accentColor)
+          else
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 40),
+                child: Text(
+                  'No transcription available',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: textColor.withValues(alpha: 0.4),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -473,27 +458,39 @@ class _RecordingDetailBottomSheetState extends State<RecordingDetailBottomSheet>
   }
 
   Widget _buildAudioPlayer(Color textColor, Color accentColor) {
+    // final recording = widget.recording;
+
+    // // Determine title based on link status
+    // String playerTitle;
+    // if (recording.callLogNumber != null) {
+    //   playerTitle = 'CALL RECORDING';
+    // } else if (recording.contactPhoneNumber != null) {
+    //   playerTitle = 'CONTACT RECORDING';
+    // } else {
+    //   playerTitle = 'AUDIO RECORDING';
+    // }
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         border: Border(
-          bottom: BorderSide(color: textColor.withOpacity(0.2), width: 2),
+          bottom: BorderSide(color: textColor.withValues(alpha: 0.2), width: 2),
         ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Label
-          Text(
-            'AUDIO PLAYER',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1.2,
-              color: textColor.withOpacity(0.5),
-            ),
-          ),
-          const SizedBox(height: 16),
+          // Text(
+          //   playerTitle,
+          //   style: TextStyle(
+          //     fontSize: 11,
+          //     fontWeight: FontWeight.bold,
+          //     letterSpacing: 1.2,
+          //     color: textColor.withValues(alpha: 0.5),
+          //   ),
+          // ),
+          // const SizedBox(height: 16),
 
           // Progress bar
           SliderTheme(
@@ -502,9 +499,9 @@ class _RecordingDetailBottomSheetState extends State<RecordingDetailBottomSheet>
               thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
               overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
               activeTrackColor: accentColor,
-              inactiveTrackColor: textColor.withOpacity(0.2),
+              inactiveTrackColor: textColor.withValues(alpha: 0.2),
               thumbColor: accentColor,
-              overlayColor: accentColor.withOpacity(0.2),
+              overlayColor: accentColor.withValues(alpha: 0.2),
             ),
             child: Slider(
               value: _duration.inMilliseconds > 0
@@ -570,6 +567,8 @@ class _RecordingDetailBottomSheetState extends State<RecordingDetailBottomSheet>
               ),
             ),
           ),
+
+          const SizedBox(height: 16),
         ],
       ),
     );

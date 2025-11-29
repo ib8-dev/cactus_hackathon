@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_intent/call_recording.dart';
 import 'package:flutter_intent/transcription_service.dart';
+import 'package:flutter_intent/summarization_service.dart';
 import 'package:flutter_intent/objectbox_service.dart';
 import 'package:flutter_intent/transcription.dart';
 import 'package:cactus/cactus.dart';
@@ -233,8 +234,60 @@ class _ProcessingBottomSheetState extends State<ProcessingBottomSheet>
         return true;
       }
 
-      // TODO: Implement summarization using Cactus LM
-      // For now, skip this step and return true
+      // Get the transcription text
+      final transcriptionText = _updatedRecording!.transcription.target?.fullText;
+      if (transcriptionText == null || transcriptionText.isEmpty) {
+        print('No transcription available to summarize');
+        return false;
+      }
+
+      // Generate summary using Cactus LM
+      final summary = await SummarizationService.summarizeTranscription(
+        transcriptionText,
+      );
+
+      if (summary.isEmpty) {
+        return false;
+      }
+
+      // Fetch the latest recording from ObjectBox to preserve all relationships
+      final objectBox = ObjectBoxService.instance;
+      final freshRecording = objectBox.getCallRecording(_updatedRecording!.id);
+
+      if (freshRecording == null) {
+        print('Recording not found in database');
+        return false;
+      }
+
+      // Create new recording with updated summary, preserving other fields
+      final updatedRecording = CallRecording(
+        id: freshRecording.id,
+        filePath: freshRecording.filePath,
+        fileName: freshRecording.fileName,
+        dateReceived: freshRecording.dateReceived,
+        size: freshRecording.size,
+        summary: summary,
+        isSummarized: true,
+        isVectorized: freshRecording.isVectorized,
+        callLogName: freshRecording.callLogName,
+        callLogNumber: freshRecording.callLogNumber,
+        callLogTimestamp: freshRecording.callLogTimestamp,
+        callLogDuration: freshRecording.callLogDuration,
+        callLogType: freshRecording.callLogType,
+        contactDisplayName: freshRecording.contactDisplayName,
+        contactPhoneNumber: freshRecording.contactPhoneNumber,
+      );
+
+      // CRITICAL: Copy the transcription relationship
+      updatedRecording.transcription.target = freshRecording.transcription.target;
+
+      // Save to ObjectBox - this will update the existing record
+      objectBox.updateCallRecording(updatedRecording);
+
+      // Update our local reference
+      _updatedRecording = updatedRecording;
+
+      print('Summary saved successfully for recording ${updatedRecording.id}');
       return true;
     } catch (e) {
       print('Error during summarization: $e');

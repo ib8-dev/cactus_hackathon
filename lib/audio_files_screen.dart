@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'call_recording.dart';
 import 'link_audio_dialog.dart';
 import 'recording_detail_bottom_sheet.dart';
+import 'processing_bottom_sheet.dart';
 
 class AudioFilesScreen extends StatefulWidget {
   final List<CallRecording> audioFiles;
@@ -30,6 +31,23 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
       backgroundColor: Colors.transparent,
       builder: (context) => RecordingDetailBottomSheet(recording: file),
     );
+  }
+
+  void _showProcessingSheet(CallRecording file) async {
+    final updatedRecording = await showModalBottomSheet<CallRecording>(
+      context: context,
+      isScrollControlled: false,
+      isDismissible: false,
+      enableDrag: false,
+      backgroundColor: Colors.transparent,
+      builder: (context) =>
+          ProcessingBottomSheet(recording: file, onComplete: () {}),
+    );
+
+    if (updatedRecording != null && mounted) {
+      // Refresh the list by triggering a rebuild
+      setState(() {});
+    }
   }
 
   void _showLinkDialog(CallRecording file) async {
@@ -180,7 +198,9 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
     Color accentColor,
   ) {
     final isProcessed = file.transcription.target != null;
-    final iconColor = isProcessed ? accentColor : textColor.withValues(alpha: 0.3);
+    final iconColor = isProcessed
+        ? accentColor
+        : textColor.withValues(alpha: 0.3);
 
     IconData iconData;
 
@@ -270,7 +290,8 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
         icon: Icon(Icons.link, color: iconColor),
         onPressed: () => _showLinkDialog(file),
       ),
-      onTap: () => isProcessed ? _showDetailSheet(file) : _showLinkDialog(file),
+      onTap: () =>
+          isProcessed ? _showDetailSheet(file) : _showProcessingSheet(file),
     );
   }
 
@@ -280,7 +301,9 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
     Color accentColor,
   ) {
     final isProcessed = file.transcription.target != null;
-    final avatarColor = isProcessed ? accentColor : textColor.withValues(alpha: 0.3);
+    final avatarColor = isProcessed
+        ? accentColor
+        : textColor.withValues(alpha: 0.3);
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -360,7 +383,8 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
         icon: Icon(Icons.link, color: avatarColor),
         onPressed: () => _showLinkDialog(file),
       ),
-      onTap: () => isProcessed ? _showDetailSheet(file) : _showLinkDialog(file),
+      onTap: () =>
+          isProcessed ? _showDetailSheet(file) : _showProcessingSheet(file),
     );
   }
 
@@ -370,7 +394,9 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
     Color accentColor,
   ) {
     final isProcessed = file.transcription.target != null;
-    final iconColor = isProcessed ? accentColor : textColor.withValues(alpha: 0.3);
+    final iconColor = isProcessed
+        ? accentColor
+        : textColor.withValues(alpha: 0.3);
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -424,7 +450,8 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
         icon: Icon(Icons.link_off, color: textColor.withValues(alpha: 0.4)),
         onPressed: () => _showLinkDialog(file),
       ),
-      onTap: () => isProcessed ? _showDetailSheet(file) : _showLinkDialog(file),
+      onTap: () =>
+          isProcessed ? _showDetailSheet(file) : _showProcessingSheet(file),
     );
   }
 

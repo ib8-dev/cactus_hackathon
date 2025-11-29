@@ -77,114 +77,124 @@ class _HomeScreenState extends State<HomeScreen> {
       final stat = await fileInfo.stat();
       final fileName = file.path.split('/').last;
 
-      print('Opening link dialog for: $fileName');
-      // Show linking bottom sheet
-      if (mounted) {
-        final result = await showModalBottomSheet<LinkResult>(
-          context: context,
-          isScrollControlled: true,
-          isDismissible: true,
-          enableDrag: true,
-          backgroundColor: Colors.transparent,
-          builder: (context) => LinkAudioDialog(fileName: fileName),
+      // Copy file to app directory first
+      try {
+        print('Copying file to app directory...');
+        final newFilePath = await FileService.copyFileToAppDirectory(
+          file.path,
+        );
+        print('File copied to: $newFilePath');
+
+        // Create initial CallRecording object (unlinked)
+        CallRecording recording = CallRecording(
+          filePath: newFilePath,
+          fileName: fileName,
+          dateReceived: lastModified,
+          size: stat.size,
         );
 
-        print('Dialog result: ${result?.type}');
+        // Save to ObjectBox
+        await _initializeObjectBox();
+        final recordingId = _objectBox!.saveCallRecording(recording);
+        recording = CallRecording(
+          id: recordingId,
+          filePath: recording.filePath,
+          fileName: recording.fileName,
+          dateReceived: recording.dateReceived,
+          size: recording.size,
+        );
+        print('Recording saved to ObjectBox with id: ${recording.id}');
 
-        // Copy file to app directory
-        try {
-          print('Copying file to app directory...');
-          final newFilePath = await FileService.copyFileToAppDirectory(
-            file.path,
+        // Add to UI list
+        if (mounted) {
+          setState(() {
+            _audioFiles.add(recording);
+          });
+        }
+
+        // Show processing bottom sheet FIRST (non-blocking)
+        if (mounted) {
+          showModalBottomSheet<CallRecording>(
+            context: context,
+            isDismissible: false,
+            enableDrag: false,
+            backgroundColor: Colors.transparent,
+            builder: (context) => ProcessingBottomSheet(
+              recording: recording,
+              onComplete: () {
+                // Refresh UI when processing completes
+                if (mounted) {
+                  setState(() {
+                    final recordings = _objectBox!.getAllCallRecordings();
+                    _audioFiles.clear();
+                    _audioFiles.addAll(recordings);
+                  });
+                }
+              },
+            ),
           );
-          print('File copied to: $newFilePath');
 
-          // Create CallRecording object
-          CallRecording recording;
-          if (result?.callLog != null) {
-            recording = CallRecording.fromCallLog(
-              filePath: newFilePath,
-              fileName: fileName,
-              dateReceived: lastModified,
-              size: stat.size,
-              callLog: result!.callLog!,
-            );
-          } else if (result?.contact != null) {
-            recording = CallRecording.fromContact(
-              filePath: newFilePath,
-              fileName: fileName,
-              dateReceived: lastModified,
-              size: stat.size,
-              contact: result!.contact!,
-            );
-          } else {
-            recording = CallRecording(
-              filePath: newFilePath,
-              fileName: fileName,
-              dateReceived: lastModified,
-              size: stat.size,
-            );
-          }
+          // Small delay to ensure processing sheet renders first
+          await Future.delayed(const Duration(milliseconds: 300));
 
-          // Save to ObjectBox
-          await _initializeObjectBox();
-          final recordingId = _objectBox!.saveCallRecording(recording);
-          recording = CallRecording(
-            id: recordingId,
-            filePath: recording.filePath,
-            fileName: recording.fileName,
-            dateReceived: recording.dateReceived,
-            size: recording.size,
-            callLogName: recording.callLogName,
-            callLogNumber: recording.callLogNumber,
-            callLogTimestamp: recording.callLogTimestamp,
-            callLogDuration: recording.callLogDuration,
-            callLogType: recording.callLogType,
-            contactDisplayName: recording.contactDisplayName,
-            contactPhoneNumber: recording.contactPhoneNumber,
+          // Then show linking dialog ON TOP of processing sheet
+          print('Opening link dialog for: $fileName');
+          final result = await showModalBottomSheet<LinkResult>(
+            context: context,
+            isScrollControlled: true,
+            isDismissible: true,
+            enableDrag: true,
+            backgroundColor: Colors.transparent,
+            builder: (context) => LinkAudioDialog(fileName: fileName),
           );
-          print('Recording saved to ObjectBox with id: ${recording.id}');
 
-          // Add to UI list temporarily
-          if (mounted) {
-            setState(() {
-              _audioFiles.add(recording);
-            });
-          }
+          print('Dialog result: ${result?.type}');
 
-          // Show processing bottom sheet
-          if (mounted) {
-            final processedRecording =
-                await showModalBottomSheet<CallRecording>(
-                  context: context,
-                  isDismissible: false,
-                  enableDrag: false,
-                  backgroundColor: Colors.transparent,
-                  builder: (context) => ProcessingBottomSheet(
-                    recording: recording,
-                    onComplete: () {},
-                  ),
-                );
+          // Update recording with link info if provided
+          if (result != null) {
+            CallRecording updatedRecording;
+            if (result.callLog != null) {
+              updatedRecording = CallRecording.fromCallLog(
+                id: recording.id,
+                filePath: recording.filePath,
+                fileName: recording.fileName,
+                dateReceived: recording.dateReceived,
+                size: recording.size,
+                callLog: result.callLog!,
+              );
+            } else if (result.contact != null) {
+              updatedRecording = CallRecording.fromContact(
+                id: recording.id,
+                filePath: recording.filePath,
+                fileName: recording.fileName,
+                dateReceived: recording.dateReceived,
+                size: recording.size,
+                contact: result.contact!,
+              );
+            } else {
+              updatedRecording = recording;
+            }
 
-            // Update the recording in the list with processed version
-            if (processedRecording != null && mounted) {
+            // Update in ObjectBox
+            _objectBox!.updateCallRecording(updatedRecording);
+
+            // Update UI
+            if (mounted) {
               setState(() {
-                final index = _audioFiles.indexWhere(
-                  (r) => r.id == recording.id,
-                );
+                final index = _audioFiles.indexWhere((r) => r.id == recording.id);
                 if (index != -1) {
-                  _audioFiles[index] = processedRecording;
+                  _audioFiles[index] = updatedRecording;
                 }
               });
             }
           }
-        } catch (e) {
-          print('Error processing file: $e');
-          if (mounted) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text('Error saving file: $e')));
-          }
+        }
+      } catch (e) {
+        print('Error processing file: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Error saving file: $e')));
         }
       }
     }

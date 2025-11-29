@@ -168,6 +168,9 @@ class _SearchScreenState extends State<SearchScreen> {
           if (_searchSummary.isNotEmpty || _isGeneratingSummary)
             Container(
               margin: const EdgeInsets.all(16),
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.3, // Max 30% of screen
+              ),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: accentColor.withValues(alpha: 0.05),
@@ -195,34 +198,36 @@ class _SearchScreenState extends State<SearchScreen> {
                         ),
                       ],
                     )
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(Icons.auto_awesome, color: accentColor, size: 18),
-                            const SizedBox(width: 8),
-                            Text(
-                              'AI SUMMARY',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 1.2,
-                                color: accentColor,
+                  : SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.auto_awesome, color: accentColor, size: 18),
+                              const SizedBox(width: 8),
+                              Text(
+                                'AI SUMMARY',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1.2,
+                                  color: accentColor,
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          _searchSummary,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                fontSize: 14,
-                                height: 1.5,
-                                color: textColor,
-                              ),
-                        ),
-                      ],
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            _searchSummary,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  fontSize: 14,
+                                  height: 1.5,
+                                  color: textColor,
+                                ),
+                          ),
+                        ],
+                      ),
                     ),
             ),
 

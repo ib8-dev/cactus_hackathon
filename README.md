@@ -4,6 +4,10 @@
 
 Call (R) automatically transcribes, summarizes, and indexes your phone conversations - completely offline. Built with Nothing's design language and powered by on-device LLMs.
 
+
+https://github.com/user-attachments/assets/513c3430-da85-40e4-a6cf-7f4f24b74f3f
+
+
 ## Screenshots
 
 <div align="center">

@@ -4,6 +4,7 @@ import 'call_recording.dart';
 import 'link_audio_dialog.dart';
 import 'recording_detail_bottom_sheet.dart';
 import 'processing_bottom_sheet.dart';
+import 'search_screen.dart';
 
 class AudioFilesScreen extends StatefulWidget {
   final List<CallRecording> audioFiles;
@@ -34,19 +35,23 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
   }
 
   void _showProcessingSheet(CallRecording file) async {
+    // The ProcessingBottomSheet automatically determines which step to start from
+    // based on what's already completed (transcription, summary, vectorization)
     final updatedRecording = await showModalBottomSheet<CallRecording>(
       context: context,
       isScrollControlled: false,
       isDismissible: false,
       enableDrag: false,
       backgroundColor: Colors.transparent,
-      builder: (context) =>
-          ProcessingBottomSheet(recording: file, onComplete: () {}),
+      builder: (context) => ProcessingBottomSheet(
+        recording: file,
+        onComplete: () {},
+      ),
     );
 
     if (updatedRecording != null && mounted) {
-      // Refresh the list by triggering a rebuild
-      setState(() {});
+      // Trigger parent to refresh the list
+      widget.onFileRelink(file, updatedRecording);
     }
   }
 
@@ -119,7 +124,20 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
     final accentColor = Theme.of(context).colorScheme.secondary;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Call recordings')),
+      appBar: AppBar(
+        title: const Text('Call recordings'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.search, color: accentColor),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SearchScreen()),
+              );
+            },
+          ),
+        ],
+      ),
       body: widget.audioFiles.isEmpty
           ? Center(
               child: Column(
@@ -197,7 +215,10 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
     Color textColor,
     Color accentColor,
   ) {
-    final isProcessed = file.transcription.target != null;
+    // Check if fully processed: transcribed, summarized, AND vectorized
+    final isProcessed = file.transcription.target != null &&
+        file.isSummarized &&
+        file.isVectorized;
     final iconColor = isProcessed
         ? accentColor
         : textColor.withValues(alpha: 0.3);
@@ -300,7 +321,10 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
     Color textColor,
     Color accentColor,
   ) {
-    final isProcessed = file.transcription.target != null;
+    // Check if fully processed: transcribed, summarized, AND vectorized
+    final isProcessed = file.transcription.target != null &&
+        file.isSummarized &&
+        file.isVectorized;
     final avatarColor = isProcessed
         ? accentColor
         : textColor.withValues(alpha: 0.3);
@@ -393,7 +417,10 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
     Color textColor,
     Color accentColor,
   ) {
-    final isProcessed = file.transcription.target != null;
+    // Check if fully processed: transcribed, summarized, AND vectorized
+    final isProcessed = file.transcription.target != null &&
+        file.isSummarized &&
+        file.isVectorized;
     final iconColor = isProcessed
         ? accentColor
         : textColor.withValues(alpha: 0.3);

@@ -5,7 +5,7 @@
   "entities": [
     {
       "id": "1:1129777401934766731",
-      "lastPropertyId": "18:1542662358134272479",
+      "lastPropertyId": "19:5033993400993430075",
       "name": "CallRecording",
       "properties": [
         {
@@ -93,7 +93,13 @@
           "relationTarget": "Transcription"
         }
       ],
-      "relations": []
+      "relations": [
+        {
+          "id": "2:1145702904327087714",
+          "name": "vectors",
+          "targetId": "4:7207501107027180539"
+        }
+      ]
     },
     {
       "id": "2:5997333617814549602",
@@ -148,19 +154,41 @@
         }
       ],
       "relations": []
+    },
+    {
+      "id": "4:7207501107027180539",
+      "lastPropertyId": "2:3659062560848625605",
+      "name": "Vector",
+      "properties": [
+        {
+          "id": "1:1471828595172578770",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:3659062560848625605",
+          "name": "embedding",
+          "type": 29
+        }
+      ],
+      "relations": []
     }
   ],
-  "lastEntityId": "3:5540166720134433378",
-  "lastIndexId": "1:3553733258145972750",
-  "lastRelationId": "1:3839041035632917224",
+  "lastEntityId": "4:7207501107027180539",
+  "lastIndexId": "2:7961270678120073529",
+  "lastRelationId": "2:1145702904327087714",
   "lastSequenceId": "0:0",
   "modelVersion": 5,
   "modelVersionParserMinimum": 5,
   "retiredEntityUids": [],
-  "retiredIndexUids": [],
+  "retiredIndexUids": [
+    7961270678120073529
+  ],
   "retiredPropertyUids": [
     3206435324609867733,
-    1640598700276949746
+    1640598700276949746,
+    5033993400993430075
   ],
   "retiredRelationUids": [],
   "version": 1

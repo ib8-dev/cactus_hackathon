@@ -6,6 +6,7 @@ class CactusController {
   static String sttModel = 'whisper-base';
   static CactusLM cactusLM = CactusLM();
   static CactusSTT cactusSTT = CactusSTT();
+  static CactusRAG cactusRAG = CactusRAG();
 
   static get isSTTModelDownloaded async =>
       await DownloadService.modelExists(sttModel);

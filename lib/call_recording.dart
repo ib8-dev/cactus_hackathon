@@ -2,6 +2,7 @@ import 'package:call_log/call_log.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:objectbox/objectbox.dart';
 import 'transcription.dart';
+import 'vector.dart';
 
 @Entity()
 class CallRecording {
@@ -18,6 +19,9 @@ class CallRecording {
 
   // Transcription and processing
   final transcription = ToOne<Transcription>();
+
+  // Vector embeddings (multiple chunks for better search)
+  final vectors = ToMany<Vector>();
 
   // Summarization
   final String? summary;

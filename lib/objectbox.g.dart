@@ -16,6 +16,7 @@ import 'package:objectbox_flutter_libs/objectbox_flutter_libs.dart';
 
 import 'call_recording.dart';
 import 'transcription.dart';
+import 'vector.dart';
 
 export 'package:objectbox/objectbox.dart'; // so that callers only have to import this file
 
@@ -23,7 +24,7 @@ final _entities = <obx_int.ModelEntity>[
   obx_int.ModelEntity(
     id: const obx_int.IdUid(1, 1129777401934766731),
     name: 'CallRecording',
-    lastPropertyId: const obx_int.IdUid(18, 1542662358134272479),
+    lastPropertyId: const obx_int.IdUid(19, 5033993400993430075),
     flags: 0,
     properties: <obx_int.ModelProperty>[
       obx_int.ModelProperty(
@@ -126,7 +127,13 @@ final _entities = <obx_int.ModelEntity>[
         relationTarget: 'Transcription',
       ),
     ],
-    relations: <obx_int.ModelRelation>[],
+    relations: <obx_int.ModelRelation>[
+      obx_int.ModelRelation(
+        id: const obx_int.IdUid(2, 1145702904327087714),
+        name: 'vectors',
+        targetId: const obx_int.IdUid(4, 7207501107027180539),
+      ),
+    ],
     backlinks: <obx_int.ModelBacklink>[],
   ),
   obx_int.ModelEntity(
@@ -191,6 +198,28 @@ final _entities = <obx_int.ModelEntity>[
     relations: <obx_int.ModelRelation>[],
     backlinks: <obx_int.ModelBacklink>[],
   ),
+  obx_int.ModelEntity(
+    id: const obx_int.IdUid(4, 7207501107027180539),
+    name: 'Vector',
+    lastPropertyId: const obx_int.IdUid(2, 3659062560848625605),
+    flags: 0,
+    properties: <obx_int.ModelProperty>[
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(1, 1471828595172578770),
+        name: 'id',
+        type: 6,
+        flags: 1,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(2, 3659062560848625605),
+        name: 'embedding',
+        type: 29,
+        flags: 0,
+      ),
+    ],
+    relations: <obx_int.ModelRelation>[],
+    backlinks: <obx_int.ModelBacklink>[],
+  ),
 ];
 
 /// Shortcut for [obx.Store.new] that passes [getObjectBoxModel] and for Flutter
@@ -231,13 +260,17 @@ Future<obx.Store> openStore({
 obx_int.ModelDefinition getObjectBoxModel() {
   final model = obx_int.ModelInfo(
     entities: _entities,
-    lastEntityId: const obx_int.IdUid(3, 5540166720134433378),
-    lastIndexId: const obx_int.IdUid(1, 3553733258145972750),
-    lastRelationId: const obx_int.IdUid(1, 3839041035632917224),
+    lastEntityId: const obx_int.IdUid(4, 7207501107027180539),
+    lastIndexId: const obx_int.IdUid(2, 7961270678120073529),
+    lastRelationId: const obx_int.IdUid(2, 1145702904327087714),
     lastSequenceId: const obx_int.IdUid(0, 0),
     retiredEntityUids: const [],
-    retiredIndexUids: const [],
-    retiredPropertyUids: const [3206435324609867733, 1640598700276949746],
+    retiredIndexUids: const [7961270678120073529],
+    retiredPropertyUids: const [
+      3206435324609867733,
+      1640598700276949746,
+      5033993400993430075,
+    ],
     retiredRelationUids: const [],
     modelVersion: 5,
     modelVersionParserMinimum: 5,
@@ -248,7 +281,9 @@ obx_int.ModelDefinition getObjectBoxModel() {
     CallRecording: obx_int.EntityDefinition<CallRecording>(
       model: _entities[0],
       toOneRelations: (CallRecording object) => [object.transcription],
-      toManyRelations: (CallRecording object) => {},
+      toManyRelations: (CallRecording object) => {
+        obx_int.RelInfo<CallRecording>.toMany(2, object.id): object.vectors,
+      },
       getId: (CallRecording object) => object.id,
       setId: (CallRecording object, int id) {
         object.id = id;
@@ -274,7 +309,7 @@ obx_int.ModelDefinition getObjectBoxModel() {
         final summaryOffset = object.summary == null
             ? null
             : fbb.writeString(object.summary!);
-        fbb.startTable(19);
+        fbb.startTable(20);
         fbb.addInt64(0, object.id);
         fbb.addOffset(1, filePathOffset);
         fbb.addOffset(2, fileNameOffset);
@@ -382,6 +417,11 @@ obx_int.ModelDefinition getObjectBoxModel() {
           0,
         );
         object.transcription.attach(store);
+        obx_int.InternalToManyAccess.setRelInfo<CallRecording>(
+          object.vectors,
+          store,
+          obx_int.RelInfo<CallRecording>.toMany(2, object.id),
+        );
         return object;
       },
     ),
@@ -476,6 +516,40 @@ obx_int.ModelDefinition getObjectBoxModel() {
         return object;
       },
     ),
+    Vector: obx_int.EntityDefinition<Vector>(
+      model: _entities[3],
+      toOneRelations: (Vector object) => [],
+      toManyRelations: (Vector object) => {},
+      getId: (Vector object) => object.id,
+      setId: (Vector object, int id) {
+        object.id = id;
+      },
+      objectToFB: (Vector object, fb.Builder fbb) {
+        final embeddingOffset = fbb.writeListFloat64(object.embedding);
+        fbb.startTable(3);
+        fbb.addInt64(0, object.id);
+        fbb.addOffset(1, embeddingOffset);
+        fbb.finish(fbb.endTable());
+        return object.id;
+      },
+      objectFromFB: (obx.Store store, ByteData fbData) {
+        final buffer = fb.BufferContext(fbData);
+        final rootOffset = buffer.derefObject(0);
+        final idParam = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          4,
+          0,
+        );
+        final embeddingParam = const fb.ListReader<double>(
+          fb.Float64Reader(),
+          lazy: false,
+        ).vTableGet(buffer, rootOffset, 6, []);
+        final object = Vector(id: idParam, embedding: embeddingParam);
+
+        return object;
+      },
+    ),
   };
 
   return obx_int.ModelDefinition(model, bindings);
@@ -563,6 +637,11 @@ class CallRecording_ {
       obx.QueryRelationToOne<CallRecording, Transcription>(
         _entities[0].properties[15],
       );
+
+  /// see [CallRecording.vectors]
+  static final vectors = obx.QueryRelationToMany<CallRecording, Vector>(
+    _entities[0].relations[0],
+  );
 }
 
 /// [Transcription] entity fields to define ObjectBox queries.
@@ -604,5 +683,18 @@ class TranscriptionSegment_ {
   /// See [TranscriptionSegment.text].
   static final text = obx.QueryStringProperty<TranscriptionSegment>(
     _entities[2].properties[3],
+  );
+}
+
+/// [Vector] entity fields to define ObjectBox queries.
+class Vector_ {
+  /// See [Vector.id].
+  static final id = obx.QueryIntegerProperty<Vector>(
+    _entities[3].properties[0],
+  );
+
+  /// See [Vector.embedding].
+  static final embedding = obx.QueryDoubleVectorProperty<Vector>(
+    _entities[3].properties[1],
   );
 }

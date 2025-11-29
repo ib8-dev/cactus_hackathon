@@ -5,6 +5,7 @@ import 'package:flutter_intent/summarization_service.dart';
 import 'package:flutter_intent/objectbox_service.dart';
 import 'package:flutter_intent/transcription.dart';
 import 'package:cactus/cactus.dart';
+import 'package:flutter_intent/rag_service.dart';
 
 enum ProcessingStep {
   linking,
@@ -302,8 +303,17 @@ class _ProcessingBottomSheetState extends State<ProcessingBottomSheet>
         return true;
       }
 
-      // TODO: Implement vectorization for RAG
-      // For now, skip this step and return true
+      await RagService.generateAndStoreEmbedding(_updatedRecording!);
+
+      // Fetch the latest recording to get the updated vector and isVectorized flag
+      final objectBox = ObjectBoxService.instance;
+      final freshRecording = objectBox.getCallRecording(_updatedRecording!.id);
+
+      if (freshRecording == null) {
+        print('Recording not found in database');
+        return false;
+      }
+      _updatedRecording = freshRecording;
       return true;
     } catch (e) {
       print('Error during vectorization: $e');

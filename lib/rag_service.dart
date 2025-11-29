@@ -5,10 +5,12 @@ import 'cactus_controller.dart';
 import 'vector.dart';
 import 'objectbox_service.dart';
 import 'search_screen.dart';
+import 'prompt.dart';
 
 class RagService {
   static final CactusLM _cactusLM = CactusController.cactusLM;
   static final CactusRAG _cactusRAG = CactusController.cactusRAG;
+  static bool _isInitialized = false;
 
   //   static Future<void> oldWayGenerateAndStoreEmbedding(
   //     CallRecording callRecording,
@@ -61,7 +63,15 @@ class RagService {
       params: CactusInitParams(model: CactusController.embeddingModel),
     );
 
-    await _cactusRAG.initialize();
+    print('111');
+
+    if (!_isInitialized) {
+      // Use a separate directory 'cactus_rag' to avoid conflicts with ObjectBoxService
+      await _cactusRAG.initialize(customDirectory: 'cactus_rag');
+      _isInitialized = true;
+    }
+
+    print('222');
 
     _cactusRAG.setEmbeddingGenerator((text) async {
       var result = await _cactusLM.generateEmbedding(
@@ -71,8 +81,12 @@ class RagService {
       return result.embeddings;
     });
 
+    print('333');
+
     // 1. "Trojan Horse": Disable internal chunking so your manual chunks pass through
     _cactusRAG.setChunking(chunkSize: 10000, chunkOverlap: 0);
+
+    print('444');
 
     // 2. Generate the smart chunks
     List<String> chunks = SmartChunker.slideBySentence(
@@ -96,8 +110,12 @@ class RagService {
       return;
     }
 
+    print('555');
+
     // Clear existing vectors
     freshRecording.vectors.clear();
+
+    print('666');
 
     // 4. Loop through chunks: store in CactusRAG AND generate vectors for ObjectBox
     for (var i = 0; i < chunks.length; i++) {
@@ -110,16 +128,22 @@ class RagService {
         fileSize: chunks[i].length,
       );
 
+      print('777');
+
       // Generate embedding for this chunk and store in ObjectBox
       final embeddingResult = await _cactusLM.generateEmbedding(
         text: chunks[i],
         modelName: CactusController.embeddingModel,
       );
 
+      print('888');
+
       if (embeddingResult.success) {
         final vector = Vector(embedding: embeddingResult.embeddings);
         freshRecording.vectors.add(vector);
       }
+
+      print('999');
     }
 
     // 5. Mark as vectorized and save
@@ -151,6 +175,38 @@ class RagService {
     print("Indexing Complete. Stored ${chunks.length} vectors in ObjectBox.");
   }
 
+  /// Delete all embeddings for a specific recording
+  static Future<void> deleteRecordingEmbeddings(int recordingId) async {
+    try {
+      if (!_isInitialized) {
+        // Use a separate directory 'cactus_rag' to avoid conflicts with ObjectBoxService
+        await _cactusRAG.initialize(customDirectory: 'cactus_rag');
+        _isInitialized = true;
+      }
+
+      // Get all chunks for this recording
+      final allChunks = _cactusRAG.chunkBox.getAll();
+      final recordingChunks = allChunks.where((chunk) {
+        final filePath = chunk.document.target?.filePath;
+        return filePath == recordingId.toString();
+      }).toList();
+
+      // Delete documents for this recording
+      final allDocuments = _cactusRAG.documentBox.getAll();
+      final recordingDocs = allDocuments.where((doc) {
+        return doc.filePath == recordingId.toString();
+      }).toList();
+
+      for (var doc in recordingDocs) {
+        _cactusRAG.documentBox.remove(doc.id);
+      }
+
+      print('Deleted ${recordingChunks.length} chunks and ${recordingDocs.length} documents for recording $recordingId');
+    } catch (e) {
+      print('Error deleting embeddings for recording $recordingId: $e');
+    }
+  }
+
   /// Verify if a recording has been properly vectorized
   static Future<bool> isRecordingVectorized(CallRecording recording) async {
     try {
@@ -168,7 +224,11 @@ class RagService {
       }
 
       // Check 3: Verify chunks exist in CactusRAG
-      await _cactusRAG.initialize();
+      if (!_isInitialized) {
+        // Use a separate directory 'cactus_rag' to avoid conflicts with ObjectBoxService
+        await _cactusRAG.initialize(customDirectory: 'cactus_rag');
+        _isInitialized = true;
+      }
 
       // Try to find at least one chunk for this recording
       final allChunks = _cactusRAG.chunkBox.getAll();
@@ -201,7 +261,11 @@ class RagService {
         params: CactusInitParams(model: CactusController.embeddingModel),
       );
 
-      await _cactusRAG.initialize();
+      if (!_isInitialized) {
+        // Use a separate directory 'cactus_rag' to avoid conflicts with ObjectBoxService
+        await _cactusRAG.initialize(customDirectory: 'cactus_rag');
+        _isInitialized = true;
+      }
 
       _cactusRAG.setEmbeddingGenerator((text) async {
         var result = await _cactusLM.generateEmbedding(
@@ -278,6 +342,95 @@ class RagService {
     } catch (e) {
       print('Error searching calls: $e');
       return [];
+    }
+  }
+
+  /// Generate a natural language summary of search results
+  static Future<String> generateSearchSummary(
+    String query,
+    List<SearchResult> results,
+  ) async {
+    if (results.isEmpty) {
+      return "I couldn't find any relevant calls for \"$query\".";
+    }
+
+    try {
+      // Initialize language model
+      await _cactusLM.initializeModel(
+        params: CactusInitParams(model: CactusController.languageModel),
+      );
+
+      // Prepare context from top results (max 5)
+      final topResults = results.take(5).toList();
+      final contextParts = <String>[];
+
+      for (var i = 0; i < topResults.length; i++) {
+        final result = topResults[i];
+        final recording = result.recording;
+        final snippet = result.matchedSnippet;
+
+        contextParts.add(
+          'Call ${i + 1}: ${recording.displayName}\n'
+          'Summary: ${recording.summary ?? "No summary"}\n'
+          'Relevant excerpt: $snippet\n',
+        );
+      }
+
+      final context = contextParts.join('\n');
+
+      // Create prompt for summary generation
+      final systemPrompt = """
+You are a helpful assistant that summarizes search results from phone call recordings.
+
+Your task:
+1. Answer the user's question directly based on the call information provided
+2. Mention WHO said or discussed it (use the contact names)
+3. Keep it concise but informative
+4. If multiple people match the query, distinguish between them clearly
+5. Use natural, conversational language
+
+Example good responses:
+- "David appears in two calls: David Chen is John's friend who called about the wedding venue. A different David (no last name) was a candidate you interviewed last week for the senior developer role."
+- "Based on your calls, the contractor Mike mentioned needing \$4,200 for electrical repairs at the downtown renovation site."
+""";
+
+      final userPrompt = """
+User's question: "$query"
+
+Relevant call information:
+$context
+
+Generate a concise, natural answer to the user's question based on these calls.
+""";
+
+      final messages = [
+        ChatMessage(role: 'system', content: systemPrompt),
+        ChatMessage(role: 'user', content: userPrompt),
+      ];
+
+      final result = await _cactusLM.generateCompletion(
+        messages: messages,
+        params: CactusCompletionParams(
+          maxTokens: 200,
+          temperature: 0.7,
+          topP: 0.9,
+        ),
+      );
+
+      if (result.success) {
+        // Clean up any template tokens that might appear
+        var cleanedResponse = result.response.trim();
+        cleanedResponse = cleanedResponse.replaceAll('|im_end|', '');
+        cleanedResponse = cleanedResponse.replaceAll('<|im_end|>', '');
+        cleanedResponse = cleanedResponse.replaceAll('</s>', '');
+        cleanedResponse = cleanedResponse.trim();
+        return cleanedResponse;
+      } else {
+        return "Found ${results.length} relevant call(s), but couldn't generate a summary.";
+      }
+    } catch (e) {
+      print('Error generating search summary: $e');
+      return "Found ${results.length} relevant call(s).";
     }
   }
 }

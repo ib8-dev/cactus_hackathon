@@ -15,7 +15,9 @@ class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
   List<SearchResult> _searchResults = [];
   bool _isSearching = false;
+  bool _isGeneratingSummary = false;
   String _searchQuery = '';
+  String _searchSummary = '';
 
   @override
   void dispose() {
@@ -28,6 +30,7 @@ class _SearchScreenState extends State<SearchScreen> {
       setState(() {
         _searchResults = [];
         _searchQuery = '';
+        _searchSummary = '';
       });
       return;
     }
@@ -35,6 +38,7 @@ class _SearchScreenState extends State<SearchScreen> {
     setState(() {
       _isSearching = true;
       _searchQuery = query;
+      _searchSummary = '';
     });
 
     try {
@@ -43,10 +47,34 @@ class _SearchScreenState extends State<SearchScreen> {
         _searchResults = results;
         _isSearching = false;
       });
+
+      // Generate summary after getting results
+      if (results.isNotEmpty) {
+        _generateSummary(query, results);
+      }
     } catch (e) {
       print('Search error: $e');
       setState(() {
         _isSearching = false;
+      });
+    }
+  }
+
+  Future<void> _generateSummary(String query, List<SearchResult> results) async {
+    setState(() {
+      _isGeneratingSummary = true;
+    });
+
+    try {
+      final summary = await RagService.generateSearchSummary(query, results);
+      setState(() {
+        _searchSummary = summary;
+        _isGeneratingSummary = false;
+      });
+    } catch (e) {
+      print('Summary generation error: $e');
+      setState(() {
+        _isGeneratingSummary = false;
       });
     }
   }
@@ -135,6 +163,68 @@ class _SearchScreenState extends State<SearchScreen> {
               ),
             ),
           ),
+
+          // AI Summary Section
+          if (_searchSummary.isNotEmpty || _isGeneratingSummary)
+            Container(
+              margin: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: accentColor.withValues(alpha: 0.05),
+                border: Border.all(color: accentColor.withValues(alpha: 0.3), width: 2),
+              ),
+              child: _isGeneratingSummary
+                  ? Row(
+                      children: [
+                        SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: accentColor,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          'Generating summary...',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: textColor.withValues(alpha: 0.7),
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ],
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.auto_awesome, color: accentColor, size: 18),
+                            const SizedBox(width: 8),
+                            Text(
+                              'AI SUMMARY',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.2,
+                                color: accentColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          _searchSummary,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                fontSize: 14,
+                                height: 1.5,
+                                color: textColor,
+                              ),
+                        ),
+                      ],
+                    ),
+            ),
 
           // Search Results
           Expanded(

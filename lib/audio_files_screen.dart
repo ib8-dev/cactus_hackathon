@@ -154,6 +154,10 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
           dateReceived: file.dateReceived,
           size: file.size,
           callLog: result.callLog!,
+          summary: file.summary,
+          isSummarized: file.isSummarized,
+          isVectorized: file.isVectorized,
+          notes: file.notes,
         );
       } else if (result.contact != null) {
         updatedFile = CallRecording.fromContact(
@@ -163,6 +167,10 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
           dateReceived: file.dateReceived,
           size: file.size,
           contact: result.contact!,
+          summary: file.summary,
+          isSummarized: file.isSummarized,
+          isVectorized: file.isVectorized,
+          notes: file.notes,
         );
       } else {
         updatedFile = CallRecording(
@@ -171,8 +179,17 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
           fileName: file.fileName,
           dateReceived: file.dateReceived,
           size: file.size,
+          summary: file.summary,
+          isSummarized: file.isSummarized,
+          isVectorized: file.isVectorized,
+          notes: file.notes,
         );
       }
+
+      // CRITICAL: Preserve the transcription and vectors relationships
+      updatedFile.transcription.target = file.transcription.target;
+      updatedFile.vectors.addAll(file.vectors);
+
       widget.onFileRelink(file, updatedFile);
     }
   }
@@ -424,7 +441,24 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
 
             try {
               await DemoDataLoader.clearDemoData(objectBox);
-              _demoRecordings = await DemoDataLoader.loadDemoData(objectBox);
+
+              // Show message that embeddings are being generated
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      '🎬 Loading demo data and generating embeddings...',
+                    ),
+                    backgroundColor: Colors.blue,
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              }
+
+              _demoRecordings = await DemoDataLoader.loadDemoData(
+                objectBox,
+                generateEmbeddings: true,
+              );
 
               setState(() {
                 _isDemoLoading = false;
@@ -434,9 +468,9 @@ class _AudioFilesScreenState extends State<AudioFilesScreen> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(
-                      '🎬 Loaded ${_demoRecordings.length} demo calls',
+                      '✅ Loaded ${_demoRecordings.length} demo calls with RAG search enabled',
                     ),
-                    backgroundColor: Colors.blue,
+                    backgroundColor: Colors.green,
                   ),
                 );
               }

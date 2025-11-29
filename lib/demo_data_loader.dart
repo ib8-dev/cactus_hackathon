@@ -3,13 +3,15 @@ import 'mock_processed_calls.dart';
 import 'objectbox_service.dart';
 import 'call_recording.dart';
 import 'transcription.dart';
+import 'rag_service.dart';
 
 class DemoDataLoader {
   /// Load demo data into ObjectBox
   /// Returns list of demo CallRecording objects
   static Future<List<CallRecording>> loadDemoData(
-    ObjectBoxService objectBox,
-  ) async {
+    ObjectBoxService objectBox, {
+    bool generateEmbeddings = true,
+  }) async {
     print('🎬 Loading demo data...');
     final demoRecordings = <CallRecording>[];
 
@@ -53,6 +55,24 @@ class DemoDataLoader {
       final savedRecording = objectBox.getCallRecording(id);
       if (savedRecording != null) {
         demoRecordings.add(savedRecording);
+
+        // Generate embeddings for demo data if requested
+        if (generateEmbeddings) {
+          // Check if embeddings already exist for this recording
+          final alreadyVectorized = await RagService.isRecordingVectorized(savedRecording);
+
+          if (alreadyVectorized) {
+            print('✅ Embeddings already exist for: ${savedRecording.displayName}');
+          } else {
+            print('🎬 Generating embeddings for demo call: ${savedRecording.displayName}');
+            try {
+              await RagService.generateAndStoreEmbedding(savedRecording);
+              print('✅ Embeddings generated for: ${savedRecording.displayName}');
+            } catch (e) {
+              print('❌ Error generating embeddings for ${savedRecording.displayName}: $e');
+            }
+          }
+        }
       }
     }
 
@@ -67,6 +87,13 @@ class DemoDataLoader {
 
     for (var recording in allRecordings) {
       if (recording.isDemoData) {
+        // Clear RAG embeddings for this demo recording
+        try {
+          await RagService.deleteRecordingEmbeddings(recording.id);
+        } catch (e) {
+          print('⚠️  Error clearing embeddings for recording ${recording.id}: $e');
+        }
+
         objectBox.deleteCallRecording(recording.id);
         deletedCount++;
       }

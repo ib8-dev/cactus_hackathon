@@ -21,16 +21,41 @@ class _RecordingDetailBottomSheetState extends State<RecordingDetailBottomSheet>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   late AudioPlayer _audioPlayer;
+  late ScrollController _scrollController;
   Duration _duration = Duration.zero;
   Duration _position = Duration.zero;
   bool _isPlaying = false;
+  bool _isCollapsed = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this); // Changed to 3 tabs
+    _tabController.addListener(_onTabChange);
     _audioPlayer = AudioPlayer();
+    _scrollController = ScrollController();
+    _scrollController.addListener(_onScroll);
     _initAudioPlayer();
+  }
+
+  void _onTabChange() {
+    // Reset collapsed state when switching tabs
+    // if (_isCollapsed) {
+    //   setState(() {
+    //     _isCollapsed = false;
+    //   });
+    // }
+  }
+
+  void _onScroll() {
+    // Collapse when scrolled down more than 50 pixels
+    final shouldCollapse =
+        _scrollController.hasClients && _scrollController.offset > 50;
+    if (shouldCollapse != _isCollapsed) {
+      setState(() {
+        _isCollapsed = shouldCollapse;
+      });
+    }
   }
 
   Future<void> _initAudioPlayer() async {
@@ -79,6 +104,7 @@ class _RecordingDetailBottomSheetState extends State<RecordingDetailBottomSheet>
   void dispose() {
     _audioPlayer.dispose();
     _tabController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -163,9 +189,9 @@ class _RecordingDetailBottomSheetState extends State<RecordingDetailBottomSheet>
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } else {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not open URL')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Could not open URL')));
       }
     }
   }
@@ -192,11 +218,21 @@ class _RecordingDetailBottomSheetState extends State<RecordingDetailBottomSheet>
             decoration: BoxDecoration(color: textColor.withOpacity(0.3)),
           ),
 
-          // Header
-          _buildHeader(textColor, accentColor),
+          // Header - collapsed or expanded
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            child: _isCollapsed
+                ? _buildCollapsedHeader(textColor, accentColor)
+                : _buildHeader(textColor, accentColor),
+          ),
 
-          // Audio Player (always visible)
-          _buildAudioPlayer(textColor, accentColor),
+          // Audio Player - collapsed or expanded
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            child: _isCollapsed
+                ? const SizedBox.shrink()
+                : _buildAudioPlayer(textColor, accentColor),
+          ),
 
           // Tab Bar
           Container(
@@ -233,6 +269,73 @@ class _RecordingDetailBottomSheetState extends State<RecordingDetailBottomSheet>
                 _buildNotesTab(textColor, accentColor),
                 _buildTranscriptionTabContent(textColor, accentColor),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCollapsedHeader(Color textColor, Color accentColor) {
+    final recording = widget.recording;
+    IconData iconData = Icons.audiotrack;
+
+    if (recording.callLogType != null) {
+      switch (recording.callLogType) {
+        case 'incoming':
+          iconData = Icons.call_received;
+          break;
+        case 'outgoing':
+          iconData = Icons.call_made;
+          break;
+        case 'missed':
+          iconData = Icons.call_missed;
+          break;
+        case 'rejected':
+          iconData = Icons.call_end;
+          break;
+        default:
+          iconData = Icons.call;
+      }
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: textColor.withOpacity(0.2), width: 2),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(iconData, color: accentColor, size: 18),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              recording.displayName.toUpperCase(),
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+                letterSpacing: 0.5,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          GestureDetector(
+            onTap: _togglePlayPause,
+            child: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                border: Border.all(color: accentColor, width: 2),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                _isPlaying ? Icons.pause : Icons.play_arrow,
+                color: accentColor,
+                size: 20,
+              ),
             ),
           ),
         ],
@@ -362,6 +465,7 @@ class _RecordingDetailBottomSheetState extends State<RecordingDetailBottomSheet>
     }
 
     return SingleChildScrollView(
+      controller: _scrollController,
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -393,10 +497,7 @@ class _RecordingDetailBottomSheetState extends State<RecordingDetailBottomSheet>
           padding: const EdgeInsets.symmetric(vertical: 40),
           child: Text(
             'No notes available',
-            style: TextStyle(
-              fontSize: 13,
-              color: textColor.withOpacity(0.4),
-            ),
+            style: TextStyle(fontSize: 13, color: textColor.withOpacity(0.4)),
           ),
         ),
       );
@@ -423,8 +524,7 @@ class _RecordingDetailBottomSheetState extends State<RecordingDetailBottomSheet>
             textColor,
             onTap: (value) => _sendEmail(value),
           ),
-        if (notes['websites'] != null &&
-            (notes['websites'] as List).isNotEmpty)
+        if (notes['websites'] != null && (notes['websites'] as List).isNotEmpty)
           _buildNoteSection(
             'Websites',
             notes['websites'] as List,
@@ -582,6 +682,7 @@ class _RecordingDetailBottomSheetState extends State<RecordingDetailBottomSheet>
     print('>>>>>> ${summary}');
 
     return SingleChildScrollView(
+      controller: _scrollController,
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -639,6 +740,7 @@ class _RecordingDetailBottomSheetState extends State<RecordingDetailBottomSheet>
     final transcription = widget.recording.transcription.target;
 
     return SingleChildScrollView(
+      controller: _scrollController,
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

@@ -236,7 +236,8 @@ class _ProcessingBottomSheetState extends State<ProcessingBottomSheet>
       }
 
       // Get the transcription text
-      final transcriptionText = _updatedRecording!.transcription.target?.fullText;
+      final transcriptionText =
+          _updatedRecording!.transcription.target?.fullText;
       if (transcriptionText == null || transcriptionText.isEmpty) {
         print('No transcription available to summarize');
         return false;
@@ -245,6 +246,7 @@ class _ProcessingBottomSheetState extends State<ProcessingBottomSheet>
       // Generate summary using Cactus LM
       final summary = await SummarizationService.summarizeTranscription(
         transcriptionText,
+        _updatedRecording!,
       );
 
       if (summary.isEmpty) {
@@ -280,7 +282,8 @@ class _ProcessingBottomSheetState extends State<ProcessingBottomSheet>
       );
 
       // CRITICAL: Copy the transcription relationship
-      updatedRecording.transcription.target = freshRecording.transcription.target;
+      updatedRecording.transcription.target =
+          freshRecording.transcription.target;
 
       // Save to ObjectBox - this will update the existing record
       objectBox.updateCallRecording(updatedRecording);
@@ -326,96 +329,101 @@ class _ProcessingBottomSheetState extends State<ProcessingBottomSheet>
     final textColor = Theme.of(context).colorScheme.onSurface;
     final accentColor = Theme.of(context).colorScheme.secondary;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(0)),
-      ),
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Title
-          Text(
-            'Processing Audio',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: 32),
+    return SizedBox(
+      height: MediaQuery.of(context).size.height * 0.8,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(0)),
+        ),
+        padding: const EdgeInsets.all(24),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Title
+              Text(
+                'Processing Audio',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 32),
 
-          // Progress Steps
-          _buildStepIndicator(
-            ProcessingStep.linking,
-            'Link',
-            Icons.link,
-            textColor,
-            accentColor,
-          ),
-          _buildStepConnector(textColor, accentColor),
-          _buildStepIndicator(
-            ProcessingStep.transcribing,
-            'Transcribe',
-            Icons.mic,
-            textColor,
-            accentColor,
-          ),
-          _buildStepConnector(textColor, accentColor),
-          _buildStepIndicator(
-            ProcessingStep.summarizing,
-            'Summarize',
-            Icons.article_outlined,
-            textColor,
-            accentColor,
-          ),
-          _buildStepConnector(textColor, accentColor),
-          _buildStepIndicator(
-            ProcessingStep.vectorizing,
-            'Vectorize',
-            Icons.storage_outlined,
-            textColor,
-            accentColor,
-          ),
+              // Progress Steps
+              _buildStepIndicator(
+                ProcessingStep.linking,
+                'Link',
+                Icons.link,
+                textColor,
+                accentColor,
+              ),
+              _buildStepConnector(textColor, accentColor),
+              _buildStepIndicator(
+                ProcessingStep.transcribing,
+                'Transcribe',
+                Icons.mic,
+                textColor,
+                accentColor,
+              ),
+              _buildStepConnector(textColor, accentColor),
+              _buildStepIndicator(
+                ProcessingStep.summarizing,
+                'Summarize',
+                Icons.article_outlined,
+                textColor,
+                accentColor,
+              ),
+              _buildStepConnector(textColor, accentColor),
+              _buildStepIndicator(
+                ProcessingStep.vectorizing,
+                'Vectorize',
+                Icons.storage_outlined,
+                textColor,
+                accentColor,
+              ),
 
-          const SizedBox(height: 32),
+              const SizedBox(height: 32),
 
-          // Status message
-          Text(
-            _statusMessage,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: _currentStep == ProcessingStep.failed
-                  ? accentColor
-                  : textColor.withValues(alpha: 0.6),
-              fontSize: 12,
-            ),
-          ),
-
-          const SizedBox(height: 24),
-
-          // Retry button if failed
-          if (_currentStep == ProcessingStep.failed) ...[
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: _retry,
-                style: OutlinedButton.styleFrom(
-                  side: BorderSide(color: accentColor, width: 2),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(0),
-                  ),
-                ),
-                child: Text(
-                  'RETRY',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: accentColor,
-                    fontWeight: FontWeight.w500,
-                    fontSize: 12,
-                  ),
+              // Status message
+              Text(
+                _statusMessage,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: _currentStep == ProcessingStep.failed
+                      ? accentColor
+                      : textColor.withValues(alpha: 0.6),
+                  fontSize: 12,
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-          ],
-        ],
+
+              const SizedBox(height: 24),
+
+              // Retry button if failed
+              if (_currentStep == ProcessingStep.failed) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: _retry,
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: accentColor, width: 2),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(0),
+                      ),
+                    ),
+                    child: Text(
+                      'RETRY',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: accentColor,
+                        fontWeight: FontWeight.w500,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -1,11 +1,16 @@
 import 'package:cactus/cactus.dart';
+import 'package:flutter_intent/prompt.dart';
+import 'package:flutter_intent/call_recording.dart';
 import 'cactus_controller.dart';
 
 class SummarizationService {
   static final CactusLM _cactusLM = CactusController.cactusLM;
 
   /// Summarizes a transcription text using Cactus LM
-  static Future<String> summarizeTranscription(String transcriptionText) async {
+  static Future<String> summarizeTranscription(
+    String transcriptionText,
+    CallRecording callRecording,
+  ) async {
     try {
       print('Starting summarization for transcription');
 
@@ -14,17 +19,12 @@ class SummarizationService {
         params: CactusInitParams(model: CactusController.languageModel),
       );
 
-      // Create messages for summarization
+      // Create messages for summarization using prompts from prompt.dart
       final messages = [
-        ChatMessage(
-          role: 'system',
-          content:
-              'You are a helpful assistant that summarizes phone call transcriptions concisely.',
-        ),
+        ChatMessage(role: 'system', content: getSummarySystemPrompt()),
         ChatMessage(
           role: 'user',
-          content:
-              'Summarize the following phone call transcription in 2-3 concise sentences. Focus on the main topic discussed and key points or outcomes:\n\n$transcriptionText',
+          content: getSummaryUserPrompt(transcriptionText, callRecording),
         ),
       ];
 
@@ -34,12 +34,17 @@ class SummarizationService {
         params: CactusCompletionParams(
           maxTokens: 150,
           temperature: 0.3,
-          topP: 0.9,
+          topP: 0.1,
         ),
       );
 
       if (result.success) {
-        final summary = result.response.trim();
+        // Clean up any template tokens that might appear
+        var summary = result.response.trim();
+        summary = summary.replaceAll('|im_end|', '');
+        summary = summary.replaceAll('<|im_end|>', '');
+        summary = summary.replaceAll('</s>', '');
+        summary = summary.trim();
         print('Summarization completed: ${summary.length} characters');
         return summary;
       } else {
